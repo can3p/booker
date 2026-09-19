@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "The Booker command line: the same core as the app, without the app."
+# Part of the Booker application, not a library published on its own.
+publish = false
 
 [lib]
 name = "booker_cli"

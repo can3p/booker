@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Markdown to Booker's document model, with a byte range on every node."
+# Part of the Booker application, not a library published on its own.
+publish = false
 
 [dependencies]
 booker-core = { workspace = true }

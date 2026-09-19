@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Shared types that every other Booker crate and the app agree on."
+# Part of the Booker application, not a library published on its own.
+publish = false
 
 [dependencies]
 serde = { workspace = true }

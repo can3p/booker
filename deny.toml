@@ -1,0 +1,77 @@
+# What we accept from the dependency tree. Checked in CI by the `deps` job
+# (`cargo deny check bans licenses sources advisories`) and runnable locally
+# with the same command — see CONTRIBUTING.md.
+#
+# Two reasons this exists beyond hygiene: a dependency with a known
+# vulnerability should stop a pull request rather than be noticed later, and
+# the licence data here is what THIRD-PARTY.md is assembled from in Wave 1.
+
+[graph]
+# Booker ships on these three. Anything a crate pulls in only for, say, UEFI
+# or wasm is not part of what we distribute, and judging it would be noise.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+all-features = true
+
+[advisories]
+version = 2
+# Only unmaintained crates we depend on directly are our problem. Typst pulls
+# in a dozen (rustybuzz, ttf-parser, paste, bincode, yaml-rust) and we are not
+# going to fork Typst's dependency tree; flagging them on every pull request
+# would train everyone to ignore this job.
+unmaintained = "workspace"
+ignore = [
+    # quick-xml 0.38.4, reached only through Typst's bibliography support
+    # (typst-library → hayagriva → citationberg). Both are denial-of-service
+    # advisories — quadratic parsing of duplicate attribute names, and
+    # unbounded namespace allocation — against a parser that, in Booker, only
+    # ever reads CSL style files from the user's own project. 0.38.4 is the
+    # newest version citationberg's semver range allows, so the fix is a Typst
+    # upgrade, not a `cargo update`. Re-check both when the pinned Typst
+    # version moves (Cargo.toml says to bump those five together).
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+]
+
+[licenses]
+version = 2
+# Every licence in the tree today, and nothing else: a new one appearing is a
+# decision, not an accident, so a pull request that pulls in a crate under a
+# licence not listed here has to add it and say why in the commit message.
+# Listing a licence that no crate uses is a warning, which is why this list is
+# exactly what is there rather than everything we would be willing to accept.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Zlib",
+    "Unlicense",
+    "0BSD",
+    "CC0-1.0",
+    "BSL-1.0",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Duplicate versions are normal in a tree this size and we do not want them to
+# block a pull request — but we do want to see them, because they are download
+# size in an application people install.
+multiple-versions = "warn"
+wildcards = "deny"
+# Our own crates depend on each other by path, which cargo-deny reads as a
+# wildcard version. Those are the ones we want; a wildcard on a crates.io
+# dependency is still an error.
+allow-wildcard-paths = true
+deny = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

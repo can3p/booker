@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Loading, checking and writing a Booker project folder."
+# Part of the Booker application, not a library published on its own.
+publish = false
 
 [dependencies]
 booker-core = { workspace = true }

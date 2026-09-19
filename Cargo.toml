@@ -29,3 +29,15 @@ serde_json = "1"
 thiserror = "1"
 toml = "0.8"
 ts-rs = "9"
+
+# Wave 0 track C (booker-typst). The Typst version is pinned exactly: Typst is
+# pre-1.0, its layout changes between releases, and the golden suite is what
+# gates an upgrade. Bump these five together, never one of them.
+comemo = "0.5"
+tempfile = "3"
+typst = "=0.15.1"
+typst-kit = { version = "=0.15.1", default-features = false, features = ["datetime"] }
+typst-layout = "=0.15.1"
+typst-pdf = "=0.15.1"
+typst-render = "=0.15.1"
+typst-svg = "=0.15.1"

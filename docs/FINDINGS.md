@@ -45,3 +45,33 @@ Format:
 - What: rustup installed to `~/.cargo`, stable 1.98.1 (aarch64-apple-darwin). `~/.cargo/bin` is **not** on the PATH, because the installer was run with `--no-modify-path`; a shell needs `. "$HOME/.cargo/env"` or an explicit `PATH` export.
 - Why it matters: a session that runs `cargo` without that will be told the command does not exist, and may wrongly conclude Rust is missing.
 - Where: `CONTRIBUTING.md`.
+
+### Incremental recompilation is the reason to keep one engine per open project
+- Learned: 2026-09-19, wave 0 / track C
+- What: measured on a generated 201-page A5 novel (aarch64-apple-darwin, release build): **cold compile 519–567 ms, recompile after a one-character edit 24–29 ms (about 20×), recompile with nothing changed 0 ms**. The same run in a debug build: cold 16.3 s, one-character edit 187 ms. Font loading at `Engine::open` is 0–3 ms in release because the bundled faces are `include_bytes!`. The saving comes entirely from keeping `comemo`'s memoized layout alive between compiles and from editing the parsed `Source` in place (`typst_kit::files::FileStore::reset` keeps the old tree and calls `Source::replace`, which reparses incrementally) — build a new `Engine` per keystroke and every compile is a cold one.
+- Why it matters: it settles the preview design. A debounce of ~150 ms with one long-lived engine per project meets `PLAN.md` §6's "under 100 ms from keystroke to preview" for a 300-page novel, and the first render after opening a book is the only slow one. It also says the 200-page golden tests must be release-only: debug Typst is ~30× slower, which is why the measurement lives in an `#[ignore]`d test.
+- Where: `crates/booker-typst/tests/incremental.rs` (`cargo test -p booker-typst --release --test incremental -- --ignored --nocapture`); `crates/booker-typst/src/engine.rs`. Typst 0.15.1.
+
+### Typst identifies a file by its path *inside* a project, and the layout cache is global
+- Learned: 2026-09-19, wave 0 / track C
+- What: in Typst 0.15 a `FileId` interns a `RootedPath` = (`VirtualRoot::Project` | a package, virtual path). The real directory is **not** part of it, so `main.typ` in two different books is the same `FileId`, and `comemo`'s memoization cache is a process-wide global. Correctness is safe — comemo revalidates a cached entry by asking the current `World` for the files it depended on, so a second project's `main.typ` fails the check and is recompiled — but the two books evict each other's work. Interned ids are also leaked forever (capped at 65535 distinct paths per process, then a panic inside Typst).
+- Why it matters: the app should keep one long-lived engine per open project and expect the incremental win to shrink when several books are open at once; it must not assume `FileId` identifies a project. If we ever open dozens of books in one process, the id budget is the thing that runs out.
+- Where: `crates/booker-typst/src/world.rs`; test `two_projects_open_at_once_do_not_bleed_into_each_other` in `crates/booker-typst/tests/compile.rs`. Typst 0.15.1.
+
+### `typst-kit` gives us the file-slot machinery without the system integration
+- Learned: 2026-09-19, wave 0 / track C
+- What: `typst-kit` 0.15.1 with `default-features = false` pulls in almost nothing (no network, no `fontdb`, no `dirs`) and still provides `files::FileStore` + the `FileLoader` trait, which is the fiddly part of a `World`: caching bytes and sources per file, and reusing a stale parsed `Source` across compiles so an edit reparses incrementally. Booker implements `FileLoader` itself — project root plus an overlay of unsaved editor buffers — which is also where reads are confined to the project and Typst packages are refused. The `datetime` feature (chrono) is worth taking for a correct local `today()`.
+- Why it matters: it is a small, upstream-maintained piece of the integration we would otherwise get subtly wrong, and taking it does not drag in the CLI's font discovery or package downloading. Do not enable `system-files`, `system-packages` or `scan-fonts`: each would let a book depend on the machine it was written on.
+- Where: `crates/booker-typst/src/world.rs`, workspace `Cargo.toml`. Typst/typst-kit 0.15.1.
+
+### Bundled fonts, and why no system fonts
+- Learned: 2026-09-19, wave 0 / track C
+- What: Typst's defaults name "Libertinus Serif" for text and "DejaVu Sans Mono" for `raw`, so a document that configures nothing renders nothing unless those faces exist. Booker bundles them (copied from `typst-assets` 0.15.1, OFL and Bitstream Vera; licences in `crates/booker-typst/fonts/NOTICE.txt`, ~1.5 MB embedded with `include_bytes!`) and additionally loads a project's own `assets/fonts/**`, project first so a book's own cut of a family wins. System fonts are deliberately not searched.
+- Why it matters: it is what makes "the same book on every machine" true, and it is the reason a missing font is a diagnostic about the *project* rather than about the user's computer. A font file that will not parse is a `BK-FONT-001` warning and the book still lays out.
+- Where: `crates/booker-typst/src/fonts.rs`, `crates/booker-typst/fonts/`.
+
+### `RenderRequest::scale` is CSS pixels, which is not Typst's unit
+- Learned: 2026-09-19, wave 0 / track C
+- What: `typst_render::render` takes `pixel_per_pt`, where a point is 1/72 inch, while the contract's `scale` is "pixels per CSS pixel" (1/96 inch) — a device pixel ratio, 2.0 on a retina screen. The conversion is `pixel_per_pt = scale * 96/72`. At scale 1 an A5 page comes out 559 × 794 px, which is the size the preview should lay out a page at before applying zoom.
+- Why it matters: get the factor wrong and every preview is 33% off, which looks like a styling bug rather than a unit bug. SVG ignores the scale entirely: it is resolution independent, and the viewport carries the size.
+- Where: `crates/booker-typst/src/engine.rs` (`POINTS_PER_CSS_PIXEL`), `crates/booker-typst/tests/render.rs`.

@@ -1,0 +1,109 @@
+# What every change to Booker has to survive. One job per concern, each named
+# for what it proves, so a red run says which rule was broken without anyone
+# opening the log.
+#
+# Budget rules (docs/waves/wave-0.5.md):
+#   * No scheduled jobs. Everything runs on a push to main or on a pull
+#     request. `cargo xtask eval` costs model time and stays a by-hand command.
+#   * Checks that cannot differ between platforms run once, on Linux.
+#   * The test matrix widens to macOS and Windows only for pull requests into
+#     main — the wave pull requests, which is where AGENTS.md §4 wants the
+#     three-platform evidence.
+#
+# The Rust version is never named here: it comes from rust-toolchain.toml, so
+# there is one place to change it.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # CI builds are one-shot: incremental artifacts are never reused and only
+  # make the cache bigger.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup component add clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  test:
+    # Linux on every push and pull request; all three platforms on pull
+    # requests into main, because that is where a wave is judged.
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(github.event_name == 'pull_request' && github.base_ref == 'main' && '["ubuntu-latest", "macos-latest", "windows-latest"]' || '["ubuntu-latest"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests
+        run: cargo test --workspace --all-targets --locked
+      # --all-targets does not run doc tests. This is the second half of
+      # `cargo test`, not an extra.
+      - name: Doc tests
+        run: cargo test --workspace --doc --locked
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --workspace --no-deps --locked
+
+  bindings:
+    name: bindings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      # The TypeScript bindings are generated, never committed. This proves
+      # the contracts still export cleanly, which is what the application
+      # will depend on from Wave 1 on.
+      - run: cargo test -p booker-core --locked export_bindings
+
+  deps:
+    name: deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Wave 0's integration merged two tracks' dependency lines cleanly and
+      # produced a manifest that failed to parse. A textual merge cannot see
+      # that; this can.
+      - name: Workspace manifests parse
+        run: cargo metadata --locked --format-version 1 > /dev/null
+      # Advisories, licences, duplicate versions and where crates come from.
+      # The licence data is also what THIRD-PARTY.md is assembled from.
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check bans licenses sources advisories

@@ -81,3 +81,11 @@ Format:
 - Options: make it `Option<String>`; or keep it required and add a `format.*` diagnostic saying a book needs a title; or leave it.
 - Default we are proceeding with: leave it, and revisit when the diagnostics engine exists (Wave 7).
 - Status: Open
+
+### Q-10 — How much CI do we buy, and does `main` get branch protection?
+- Raised: 2026-09-19, wave 0.5
+- Needed by: Wave 0.5, and again at Wave 1 when the release matrix starts building installers
+- Context: the Typst dependency tree is expensive to compile, and only the owner can enable branch protection on GitHub — an agent can add a pre-push hook, which is advice, not a gate.
+- Options: (a) Linux-only checks on every push, three platforms only on pull requests into `main`; (b) three platforms on every pull request; (c) three platforms on everything.
+- Default we are proceeding with: (a), with no scheduled jobs of any kind, and a request to the owner to turn on branch protection for `main` with `fmt`, `clippy` and `test` as required checks once they are green.
+- Status: Open

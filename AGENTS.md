@@ -18,6 +18,8 @@ This file is the standing instruction for any agent session. Read it first, foll
 | `docs/WAVE-LOG.md` | What each finished wave actually shipped | Agents, at the end of a wave |
 | `docs/FINDINGS.md` | Things learned along the way that a future session would otherwise rediscover | Agents, as they learn them |
 | `docs/waves/wave-N.md` | The brief for one wave: tracks, owned paths, contracts, done criteria | Wave lead, before tracks start |
+| `README.md` | How to get Booker running and what it can do **today** | Anyone who changes what a user can do |
+| `CONTRIBUTING.md` | How to set up and work on the repository | Anyone who changes the setup or the commands |
 
 **Starting a session:** read `docs/WAVE-LOG.md` (what is finished), then `docs/PLAN.md` §8 (the waves), then `git branch -a` (what is in flight), then the brief for the current wave in `docs/waves/`. Say which wave and track you are on before you start changing files.
 
@@ -32,8 +34,12 @@ Put every kind of output in exactly one place:
 - **A wave finishes** → add its entry to `docs/WAVE-LOG.md` (what shipped, what deviated from the plan, the release tag and PR, what was deferred).
 - **A hard-won fact** (a Typst behaviour, a Tauri quirk, a toolchain trap, a benchmark, a dead end and why) → append to `docs/FINDINGS.md`. The test: would a future session waste an hour without this?
 - **A process rule changes** → edit this file, in the same change that introduces the rule.
+- **Anything a user can see or type changes** → update `README.md` in the same change. A new or renamed command, a changed flag or default, a new requirement to install, a different output path, a changed project layout, a capability that starts or stops working: the README must describe what the software does *today*, never what it will do. If a change makes a sentence in the README wrong, fixing that sentence is part of the change, not a follow-up.
+- **The setup or the everyday commands change** → update `CONTRIBUTING.md` the same way.
 
-Keep all five documents accurate at the end of every wave. A wave whose documents are stale is not finished.
+Documentation is part of the work, not a chore after it. A pull request that changes behaviour and leaves the documents describing the old behaviour is incomplete, and so is one that documents something that does not exist yet. When in doubt, describe what you can demonstrate.
+
+Keep every document in this table accurate at the end of every wave. A wave whose documents are stale is not finished.
 
 ## 3. Branching, waves and pull requests
 
@@ -46,7 +52,7 @@ Keep all five documents accurate at the end of every wave. A wave whose document
 
 ## 4. Definition of done
 
-A **track** is done when: the feature works, it has tests (§6), `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`, `pnpm lint` and `pnpm test` all pass, documents from §2 are updated, and the pull request into `wave-N` is green.
+A **track** is done when: the feature works, it has tests (§6), `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`, `pnpm lint` and `pnpm test` all pass, **the documents from §2 — the README included — describe what the software now does**, and the pull request into `wave-N` is green.
 
 A **wave** is done when, on top of every track being done:
 

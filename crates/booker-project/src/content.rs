@@ -140,7 +140,7 @@ enum Problem {
 
 impl Problem {
     fn into_diagnostic(self, relative: &Path, at: Option<SourceLocation>) -> Diagnostic {
-        let shown = relative.display();
+        let shown = crate::display_path(relative);
         let (rule, message) = match self {
             Problem::Missing => (
                 rules::MISSING_CHAPTER,

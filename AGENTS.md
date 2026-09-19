@@ -18,12 +18,13 @@ This file is the standing instruction for any agent session. Read it first, foll
 | `docs/WAVE-LOG.md` | What each finished wave actually shipped | Agents, at the end of a wave |
 | `docs/FINDINGS.md` | Things learned along the way that a future session would otherwise rediscover | Agents, as they learn them |
 | `docs/waves/wave-N.md` | The brief for one wave: tracks, owned paths, contracts, done criteria | Wave lead, before tracks start |
+| `docs/tutorials/*.md` | Tutorials: a real task walked through end to end, for someone making their first book | Anyone who adds or changes a user-visible capability |
 | `README.md` | How to get Booker running and what it can do **today** | Anyone who changes what a user can do |
 | `CONTRIBUTING.md` | How to set up and work on the repository | Anyone who changes the setup or the commands |
 
 **Starting a session:** read `docs/WAVE-LOG.md` (what is finished), then `docs/PLAN.md` §8 (the waves), then `git branch -a` (what is in flight), then the brief for the current wave in `docs/waves/`. Say which wave and track you are on before you start changing files.
 
-**Where things stand today:** Wave 0 is complete and merged — the core works end to end, `booker new` then `booker build` writes a PDF. **Wave 0.5 is the next one to start**, and its brief is `docs/waves/wave-0.5.md`: continuous integration, so that the fmt, clippy and test rules in §4 below are checked by something other than the person who typed them, and so that the suite is known to pass on Linux and Windows before Wave 1 merges four parallel tracks. Wave 1 — the desktop application and the release pipeline, `docs/waves/wave-1.md` — follows it. Rust lives in `~/.cargo/bin`, which is not on the default PATH — run `. "$HOME/.cargo/env"` first.
+**Where things stand today:** Wave 0 is complete and merged — the core works end to end, `booker new` then `booker build` writes a PDF. **Wave 0.5 is the next one to start**, and its brief is `docs/waves/wave-0.5.md`: continuous integration, so that the fmt, clippy and test rules in §4 below are checked by something other than the person who typed them, and so that the suite is known to pass on Linux and Windows before Wave 1 merges four parallel tracks. **Wave 0.6 follows it** (`docs/waves/wave-0.6.md`): the tutorial for what Booker can already do, and the harness that keeps tutorials from drifting away from the software. Then Wave 1 — the desktop application and the release pipeline, `docs/waves/wave-1.md`. Rust lives in `~/.cargo/bin`, which is not on the default PATH — run `. "$HOME/.cargo/env"` first.
 
 ## 2. Which document gets the write
 
@@ -34,6 +35,7 @@ Put every kind of output in exactly one place:
 - **A wave finishes** → add its entry to `docs/WAVE-LOG.md` (what shipped, what deviated from the plan, the release tag and PR, what was deferred).
 - **A hard-won fact** (a Typst behaviour, a Tauri quirk, a toolchain trap, a benchmark, a dead end and why) → append to `docs/FINDINGS.md`. The test: would a future session waste an hour without this?
 - **A process rule changes** → edit this file, in the same change that introduces the rule.
+- **A user-visible capability arrives or changes** → the tutorials must teach it, in the same change (`docs/requirements.md`). Extend the tutorial that covers the surrounding task when there is one, and add a new `docs/tutorials/NN-<name>.md` when the capability is a task of its own. Write it for someone making their first book: a real thing to make, every command or click, and what the screen actually says back. A feature nobody can be walked through is not finished, and a tutorial describing something the software no longer does is worse than none — if a change makes a tutorial wrong, fixing it is part of the change.
 - **Anything a user can see or type changes** → update `README.md` in the same change. A new or renamed command, a changed flag or default, a new requirement to install, a different output path, a changed project layout, a capability that starts or stops working: the README must describe what the software does *today*, never what it will do. If a change makes a sentence in the README wrong, fixing that sentence is part of the change, not a follow-up.
 - **The setup or the everyday commands change** → update `CONTRIBUTING.md` the same way.
 
@@ -52,17 +54,18 @@ Keep every document in this table accurate at the end of every wave. A wave whos
 
 ## 4. Definition of done
 
-A **track** is done when: the feature works, it has tests (§6), `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`, `pnpm lint` and `pnpm test` all pass, **the documents from §2 — the README included — describe what the software now does**, and the pull request into `wave-N` is green.
+A **track** is done when: the feature works, it has tests (§6), `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`, `pnpm lint` and `pnpm test` all pass, **the documents from §2 — the README and the tutorials included — describe what the software now does**, and the pull request into `wave-N` is green.
 
 A **wave** is done when, on top of every track being done:
 
 1. **It finishes as a pull request, and the project it leaves behind is clean and runnable.** Clean: no half-finished migration, no feature parked behind a flag nobody sets, no commented-out branch of code waiting for the next wave, no generated output or scratch file committed. Runnable: a person who clones the repository fresh and follows `CONTRIBUTING.md` gets a green `cargo test --workspace` and can run what the wave says it built — the CLI for Waves 0 and 0.5, the application from Wave 1 on — without knowing a trick. If a wave cannot end that way, it ends smaller: cut scope to the last point where everything works and move the rest to the next wave, writing down what moved. This applies to every wave, including preliminary ones that ship no installer.
 2. The demo named in `docs/PLAN.md` for that wave can be performed end to end by a person who did not build it.
-3. From Wave 7 on: the MCP conformance suite is green in CI, and the eval scenarios — including the one this wave added — have been run by hand, with the result recorded in the wave log.
-4. Installers build on macOS, Windows and Linux in CI, signed where signing is configured.
-5. **The previous release updates itself to the new one.** Install the previous version, run the updater, confirm it lands on the new build. Every wave ships through the updater; this is the one check that must never be skipped.
-6. A project made by the previous version still opens, and a project made by this version opens in the previous version without losing data (unknown keys are preserved, §7).
-7. `docs/WAVE-LOG.md`, `docs/OPEN-QUESTIONS.md` and `docs/FINDINGS.md` are updated, and the wave pull request is merged to `main` and tagged.
+3. **Every capability the wave added can be learned from a tutorial** in `docs/tutorials/`, updated or written in this wave, and the tutorials still describe software that exists. A wave that shipped a feature and no way to learn it is not done.
+4. From Wave 7 on: the MCP conformance suite is green in CI, and the eval scenarios — including the one this wave added — have been run by hand, with the result recorded in the wave log.
+5. Installers build on macOS, Windows and Linux in CI, signed where signing is configured.
+6. **The previous release updates itself to the new one.** Install the previous version, run the updater, confirm it lands on the new build. Every wave ships through the updater; this is the one check that must never be skipped.
+7. A project made by the previous version still opens, and a project made by this version opens in the previous version without losing data (unknown keys are preserved, §7).
+8. `docs/WAVE-LOG.md`, `docs/OPEN-QUESTIONS.md` and `docs/FINDINGS.md` are updated, and the wave pull request is merged to `main` and tagged.
 
 ## 5. Parallel work with worktrees
 

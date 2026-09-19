@@ -335,7 +335,7 @@ Key technical choices:
 
 ## 8. Development waves
 
-From Wave 1 on, each wave ends with a signed, installable build for macOS, Windows and Linux, delivered through the updater. Waves 0 and 0.5 come before there is anything to install: they build the core and the checks that guard it. Each wave has a **contracts** step (done by the lead model, about 1 day), then **parallel tracks** in separate git worktrees, then an **integration and release** step.
+From Wave 1 on, each wave ends with a signed, installable build for macOS, Windows and Linux, delivered through the updater, **and with the tutorials that teach whatever it added** (`docs/requirements.md`; `AGENTS.md` §4). Waves 0, 0.5 and 0.6 come before there is anything to install: they build the core, the checks that guard it, and the first tutorial. Each wave has a **contracts** step (done by the lead model, about 1 day), then **parallel tracks** in separate git worktrees, then an **integration and release** step.
 
 Model tiers used below:
 - **L (large: Opus):** architecture, contracts, solver, codegen core, tricky integration.
@@ -369,6 +369,19 @@ A short wave inserted before Wave 1 because Wave 1 merges four parallel tracks a
 
 Exit criteria: every pull request runs the full check set; the suite passes on three platforms; each check has been seen to fail on purpose; `CONTRIBUTING.md` gives the local command for every check. No installers and no updater — those start with Wave 1.
 
+### Wave 0.6: The first tutorial
+**Demo:** someone who has never seen Booker follows `docs/tutorials/01-your-first-book.md` and ends up holding a PDF of a book they wrote. Then change one line of the CLI's output on a branch, and CI goes red naming the tutorial and the line that is now a lie.
+
+`docs/requirements.md` asks for tutorials covering everything Booker can do, and for every wave that adds a visible capability to update or add one in the same change. Booker can already do something and nothing teaches it, so the rule starts here rather than leaving a gap under Wave 1. The second half of the wave is the reason it comes after CI: a tutorial rots silently — nothing fails when a printed line changes, a reader just finds out — so the commands in a tutorial are executed by the test suite.
+
+| Track | Work | Tier |
+|---|---|---|
+| A. The tutorial | `docs/tutorials/01-your-first-book.md`: install, `booker new`, the generated folder, writing chapters, page size and margins, `booker build`, and two faults on purpose so a beginner meets a diagnostic | M |
+| B. Tutorials that check themselves | A test that runs every ```console block in `docs/tutorials/` against a temporary project and compares the output, with `…` as the wildcard for durations and paths; inside the existing `test` job | M |
+| C. Where they are advertised | `README.md` points at the tutorial before the flag list; `CONTRIBUTING.md` says how to add one and how to keep it green | S |
+
+Exit criteria: a beginner can follow the tutorial to their own PDF; a deliberate change to the CLI's output turns `cargo test` red naming the tutorial line; everything Booker can do today can be learned from `docs/tutorials/`. Brief: `docs/waves/wave-0.6.md`.
+
 ### Wave 1: The application and how it reaches people
 **Demo:** download Booker, install it on macOS, Windows or Linux, open a folder, see the book's pages, export a PDF. Then publish the next version and watch the installed one update itself.
 
@@ -380,6 +393,7 @@ Everything here is independent of everything in Wave 0 except the contracts, whi
 | B. Application shell | Tauri 2 + Svelte 5 + TypeScript: window layout (chapter sidebar, editor pane, preview, status bar, problems panel), open-folder, recent projects, "Check for updates…" | M |
 | C. Preview | Page images from the engine over the `booker://` protocol, visible-page rendering, zoom, scroll — the app's first real use of the Wave 0 core | M |
 | D. Hygiene | Third-party notices (Typst Apache-2.0, bundled font licences) assembled from the `cargo deny` licence data Wave 0.5 set up, icons, the frontend `pnpm lint` and `pnpm test` jobs added to the existing CI workflow | S |
+| D2. Tutorial | `docs/tutorials/02-the-app.md`: the same book made from the window instead of the terminal — open a folder, read the preview, export, update | S |
 
 Exit criteria: installers built by CI for all three platforms; **a previous release updates itself to the new one**; the app opens a project and shows its pages.
 

@@ -46,6 +46,17 @@ fighting too much with the image layouts and endless settings.
   not the only option.
 * The output should be as simple as an HTML or ready to print PDF.
 
+## Documentation
+
+* The documentation must include **tutorials that cover everything the software can
+  do**, written for the audience above: someone making their first book, not someone
+  who already knows typesetting. A tutorial walks through a real task from start to
+  finish and shows what the screen or the terminal actually says at each step.
+* **Every wave that adds something a user can see updates an existing tutorial or adds
+  a new one, in the same change.** A capability nobody can be walked through is not
+  finished work, and a tutorial that describes something the software no longer does is
+  worse than no tutorial at all.
+
 ## Functional requirements
 
 * This is a cross platform application

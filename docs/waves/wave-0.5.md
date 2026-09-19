@@ -103,9 +103,9 @@ Anything found here goes in `docs/FINDINGS.md` with the platform named. A future
 
 ## Which of the `AGENTS.md` §4 wave criteria apply
 
-Criteria 4, 5 and 6 — installers on three platforms, the previous release updating itself, and project-format compatibility across versions — **do not apply to this wave**: there is no application and no release yet, exactly as in Wave 0. They start with Wave 1, which is the first wave that ships something a person can install. Criterion 3 (the MCP suite and evals) starts at Wave 7.
+Criteria 5, 6 and 7 — installers on three platforms, the previous release updating itself, and project-format compatibility across versions — **do not apply to this wave**: there is no application and no release yet, exactly as in Wave 0. They start with Wave 1, which is the first wave that ships something a person can install. Criterion 4 (the MCP suite and evals) starts at Wave 7. Criterion 3 (a tutorial for what the wave added) adds nothing a user can see, so it is Wave 0.6 that makes it true for the software that exists.
 
-Criteria 1, 2 and 7 apply as written, and criterion 1 is the one this wave exists to make checkable by a machine: the wave ends with a pull request into `main` and a tree where a fresh clone, following `CONTRIBUTING.md`, gets a green `cargo test --workspace` and a working `booker new` / `booker build`. CI proving that on three platforms is the deliverable.
+Criteria 1, 2 and 8 apply as written, and criterion 1 is the one this wave exists to make checkable by a machine: the wave ends with a pull request into `main` and a tree where a fresh clone, following `CONTRIBUTING.md`, gets a green `cargo test --workspace` and a working `booker new` / `booker build`. CI proving that on three platforms is the deliverable.
 
 ## Not in this wave
 

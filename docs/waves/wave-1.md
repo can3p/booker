@@ -38,6 +38,11 @@ Tauri 2 + Svelte 5 + TypeScript. Window layout: chapter sidebar, editor pane, pr
 Page images served over the custom protocol rather than through IPC (base64 through a JSON channel is the slowest thing in the app). Render only visible pages, zoom, scroll, and re-render on change. The revision belongs in the URL so images cache forever and a stale one is never mistaken for current.
 **Done when:** scrolling a 200-page book is smooth, and an edit to a file on disk is visible in the preview.
 
+### D2. The application's tutorial — tier S
+**Owns:** `docs/tutorials/02-the-app.md`, `docs/tutorials/index.md`.
+Everything Wave 0.6's tutorial does from the terminal, done from the window instead: install Booker, open a book folder, read the pages in the preview, export a PDF, and update to the next version. Same rules as Wave 0.6 track A — a real book, every step, what the screen actually says — and the same check: whatever can be executed is executed by the tutorial harness, and the rest is walked through by hand before the wave closes.
+**Done when:** someone who installed Booker from an installer can learn the app from `docs/tutorials/`, and `AGENTS.md` §4 criterion 3 is true of everything this wave added.
+
 ### D. Hygiene — tier S
 **Owns:** `THIRD-PARTY.md`, icons, the frontend jobs in `.github/workflows/ci.yml`.
 Third-party notices (Typst is Apache-2.0; the bundled font licences are in `crates/booker-typst/fonts/NOTICE.txt`), assembled from the licence data `cargo deny` already produces rather than by hand. Icons at every required size, wired into `tauri.conf.json`. `pnpm lint` and `pnpm test` added as jobs in the Wave 0.5 workflow, gated on the app directory so a Rust-only change does not pay for a Node install.
@@ -48,7 +53,7 @@ Third-party notices (Typst is Apache-2.0; the bundled font licences are in `crat
 ## Order of work
 
 1. Wave lead: create `wave-1`, add the Tauri scaffold and the IPC command wiring, freeze it.
-2. A, B, D start in parallel; C starts once B's window exists.
+2. A, B, D start in parallel; C starts once B's window exists; D2 is written last, against the application that actually shipped.
 3. Integration on `wave-1`: full suite on all three platforms, then tag `v0.2.0`, then a trivial `v0.2.1` to prove the update path.
 4. Write the `docs/WAVE-LOG.md` entry, update `docs/OPEN-QUESTIONS.md`, open the pull request into `main`.
 
@@ -57,6 +62,7 @@ Third-party notices (Typst is Apache-2.0; the bundled font licences are in `crat
 - Installers for macOS, Windows and Linux, produced by CI.
 - **A `v0.2.0` installation updates itself to `v0.2.1`.**
 - The app opens a project, shows its pages, exports a PDF.
+- The application can be learned from `docs/tutorials/` (`AGENTS.md` §4 criterion 3).
 - `docs/WAVE-LOG.md` entry written; the documents in `AGENTS.md` §2 accurate.
 
 ## Not in this wave

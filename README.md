@@ -6,7 +6,17 @@ Book authoring for people who want a good-looking book without learning typesett
 
 A Booker project is a plain folder: Markdown for the text, a few readable TOML files for how it should look. It lives in git, opens in any editor, and builds into a print-ready PDF. The layout engine is [Typst](https://typst.app), embedded in the application, so a 200-page novel lays out in about half a second.
 
-**Status: early.** The core works end to end on the command line — a folder of Markdown becomes a PDF. Next come a tutorial for what it can already do, then the desktop application and the installers, so today Booker is built from source and run as a command. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
+**Status: early.** The core works end to end on the command line — a folder of Markdown becomes a PDF. Next come the desktop application and the installers, so today Booker is built from source and run as a command. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
+
+## Start here
+
+**[Your first book](docs/tutorials/01-your-first-book.md)** takes you from an empty folder to
+a printable PDF of a short book you wrote yourself, in about twenty minutes. It assumes
+nothing — it starts at installing Booker — and it is the quickest way to find out what this
+is. Everything below is the short version and the reference.
+
+[`docs/tutorials/`](docs/tutorials/index.md) is the full list; between them the tutorials
+cover everything Booker can currently do.
 
 ## What you need
 
@@ -98,6 +108,7 @@ cargo xtask --help                          # development tasks
 | [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) | What each finished milestone actually shipped |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | What is undecided, and what we are doing meanwhile |
 | [`docs/FINDINGS.md`](docs/FINDINGS.md) | Things learned the hard way, so they are learned once |
+| [`docs/tutorials/`](docs/tutorials/index.md) | Tutorials: a real task walked through end to end |
 | [`docs/requirements.md`](docs/requirements.md) | What the product must do |
 
 ## Licence

@@ -41,6 +41,12 @@ pub enum Severity {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../app/src/lib/bindings/")]
 pub struct SourceLocation {
+    /// Where the file is in the project, relative to its root and spelled
+    /// with forward slashes on every platform — build it with
+    /// [`crate::display_path`] when it comes from the filesystem rather than
+    /// from a project file. This string reaches the problems panel, the CLI
+    /// and, from Wave 7, an agent comparing our output with the CLI's, so
+    /// one file has to print as one string wherever Booker runs.
     #[ts(type = "string")]
     pub file: PathBuf,
     /// 1-based, as editors count.

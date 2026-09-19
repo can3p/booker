@@ -10,6 +10,7 @@ pub mod diagnostic;
 pub mod error;
 pub mod geometry;
 pub mod ipc;
+pub mod path;
 pub mod project;
 
 pub use compile::{
@@ -18,4 +19,5 @@ pub use compile::{
 pub use diagnostic::{Diagnostic, Fix, LayoutLocation, Severity, SourceLocation};
 pub use error::{Error, Result};
 pub use geometry::{Length, Margins, PageSize, Unit};
+pub use path::display_path;
 pub use project::{BookConfig, PageConfig, ProjectRef, Revision, FORMAT_VERSION};

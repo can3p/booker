@@ -16,6 +16,7 @@
 use std::path::{Path, PathBuf};
 
 use booker_core::diagnostic::{Diagnostic, Severity, SourceLocation};
+use booker_core::display_path;
 use typst::foundations::Bytes;
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
@@ -155,7 +156,10 @@ impl Fonts {
 }
 
 fn unreadable(root: &Path, path: &Path, why: &str) -> Diagnostic {
-    let relative = path.strip_prefix(root).unwrap_or(path).to_path_buf();
+    // Project-relative and forward-slashed, so the warning reads the same on
+    // every platform: a diagnostic goes to the problems panel, to the CLI
+    // and, from Wave 7, to an agent comparing our output against the CLI's.
+    let relative = PathBuf::from(display_path(path.strip_prefix(root).unwrap_or(path)));
     Diagnostic::error(
         RULE_UNREADABLE_FONT,
         format!("`{}` was ignored: {why}", relative.display()),

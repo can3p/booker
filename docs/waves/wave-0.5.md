@@ -1,6 +1,6 @@
-# Wave 0.5 — Continuous integration: the gate every later wave passes through
+# Wave 0.5 — Continuous integration: the gate every later wave passes through ✅ complete
 
-Branch: `wave-0.5` (off `main`) · Finishes as one pull request into `main` · No release tag: there is still nothing installable, the first tag is Wave 1's `v0.2.0`
+Branch: `wave-0.5`, pull request #4 into `main`. What actually shipped, and what the first three-platform run found, is in `docs/WAVE-LOG.md`. No release tag: there is still nothing installable, the first tag is Wave 1's `v0.2.0`.
 
 Read `AGENTS.md` first. This brief assigns the tracks, the paths each owns, and what done means.
 

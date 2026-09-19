@@ -19,7 +19,7 @@ Format:
 ---
 
 ## Wave 0.5 — Continuous integration
-- Shipped: 2026-09-19 (no release tag: nothing installable yet, the first tag is Wave 1's `v0.2.0`)
+- Shipped: 2026-09-20, merged to `main` as PR #4 (no release tag: nothing installable yet, the first tag is Wave 1's `v0.2.0`). The planning that preceded it merged as PR #3.
 - Demo: open a pull request that is unformatted, warns under clippy, fails a test or duplicates a dependency key; CI marks it red, one job per fault, each message naming the fault. Fixed, it goes green on macOS, Linux and Windows.
 - Tracks: A workflow · B green off macOS · C dependency and repository guards — run by one session rather than in parallel worktrees; the wave was too small for the setup to pay for itself.
 - Deviations from the plan:

@@ -24,7 +24,7 @@ This file is the standing instruction for any agent session. Read it first, foll
 
 **Starting a session:** read `docs/WAVE-LOG.md` (what is finished), then `docs/PLAN.md` §8 (the waves), then `git branch -a` (what is in flight), then the brief for the current wave in `docs/waves/`. Say which wave and track you are on before you start changing files.
 
-**Where things stand today:** Wave 0 is complete and merged — the core works end to end, `booker new` then `booker build` writes a PDF. **Wave 0.5 is the next one to start**, and its brief is `docs/waves/wave-0.5.md`: continuous integration, so that the fmt, clippy and test rules in §4 below are checked by something other than the person who typed them, and so that the suite is known to pass on Linux and Windows before Wave 1 merges four parallel tracks. **Wave 0.6 follows it** (`docs/waves/wave-0.6.md`): the tutorial for what Booker can already do, and the harness that keeps tutorials from drifting away from the software. Then Wave 1 — the desktop application and the release pipeline, `docs/waves/wave-1.md`. Rust lives in `~/.cargo/bin`, which is not on the default PATH — run `. "$HOME/.cargo/env"` first.
+**Where things stand today:** Waves 0 and 0.5 are complete and merged. The core works end to end — `booker new` then `booker build` writes a PDF — and CI checks fmt, clippy, the test suite on macOS, Linux and Windows, the doc build, the TypeScript bindings and the dependency policy on every pull request. **Wave 0.6 is the next one to start**, and its brief is `docs/waves/wave-0.6.md`: the tutorial for what Booker can already do, and the harness that keeps tutorials from drifting away from the software. Then Wave 1 — the desktop application and the release pipeline, `docs/waves/wave-1.md`. Rust lives in `~/.cargo/bin`, which is not on the default PATH — run `. "$HOME/.cargo/env"` first.
 
 ## 2. Which document gets the write
 
@@ -42,6 +42,8 @@ Put every kind of output in exactly one place:
 Documentation is part of the work, not a chore after it. A pull request that changes behaviour and leaves the documents describing the old behaviour is incomplete, and so is one that documents something that does not exist yet. When in doubt, describe what you can demonstrate.
 
 Keep every document in this table accurate at the end of every wave. A wave whose documents are stale is not finished.
+
+**And `main` never holds a stale statement, not even briefly.** Some sentences go false on merge rather than on edit — "where things stand today", a `✅ done` marker, a wave log claiming something shipped, anything written in the future tense about work that has since landed. The change that merges carries their update with it; a pull request that would leave `main` describing a state of affairs that ended when it merged is incomplete, and the fix belongs in that pull request rather than in the next one. If staleness reaches `main` anyway, correct it in its own small pull request straight away — do not wait for unrelated work to carry it.
 
 ## 3. Branching, waves and pull requests
 

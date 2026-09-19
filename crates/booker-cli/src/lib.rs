@@ -12,7 +12,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use booker_core::{CompileRequest, CompileTarget};
-use booker_project::{format_diagnostic, Project, Severity, Template};
+use booker_project::{display_path, format_diagnostic, Project, Severity, Template};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -138,7 +138,7 @@ fn build(root: &Path, out: &mut impl Write) -> anyhow::Result<i32> {
         writeln!(
             out,
             "  {:<32} {}, {}, {}{}",
-            chapter.relative_path().display(),
+            display_path(chapter.relative_path()),
             plural(chapter.word_count(), "word"),
             plural(document.headings().len(), "heading"),
             plural(document.images().len(), "image"),
@@ -188,7 +188,7 @@ fn build(root: &Path, out: &mut impl Write) -> anyhow::Result<i32> {
             writeln!(
                 out,
                 "Built {} — {} pages in {} ms",
-                project.relative(&output).display(),
+                display_path(project.relative(&output)),
                 result.pages.len(),
                 result.duration_ms
             )?;
@@ -197,7 +197,7 @@ fn build(root: &Path, out: &mut impl Write) -> anyhow::Result<i32> {
             writeln!(
                 out,
                 "Could not build {}: {reason}",
-                project.relative(&output).display()
+                display_path(project.relative(&output))
             )?;
             return Ok(HAS_ERRORS);
         }

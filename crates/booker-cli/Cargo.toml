@@ -5,6 +5,11 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "The Booker command line: the same core as the app, without the app."
+
+[lib]
+name = "booker_cli"
+path = "src/lib.rs"
 
 [[bin]]
 name = "booker"
@@ -16,3 +21,6 @@ booker-project = { workspace = true }
 booker-typst = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

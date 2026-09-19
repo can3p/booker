@@ -1,0 +1,23 @@
+# A project with something wrong on purpose. This fixture is how we check
+# that every kind of breakage is reported with a file, a line and a column,
+# and that the book still opens anyway. Do not "fix" it.
+
+format = 1
+title = "The Broken Book"
+langauge = "en"                  # a typo: this should be `language`
+
+chapters = [
+    "content/01-the-garden.md",
+    "content/02-the-missing-chapter.md",   # this file is not there
+]
+
+[page]
+size = "a5"
+facing = "yes"                   # should be true or false, not a string
+bleed = "3 furlongs"             # not a measurement Booker understands
+
+[page.margins]
+top = "18mm"
+bottom = "20mm"
+inside = "20mm"
+outside = "15mm"

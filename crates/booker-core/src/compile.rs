@@ -64,10 +64,18 @@ pub enum RenderFormat {
 #[ts(export, export_to = "../../../app/src/lib/bindings/")]
 pub struct RenderRequest {
     pub project: ProjectRef,
+    /// The revision this page was laid out at. A render returns bytes, so
+    /// nothing echoes it back; staleness is caught by the revision in the
+    /// `booker://` URL instead (see `ipc`). Kept because the renderer must
+    /// refuse a page from a revision it no longer holds.
     pub revision: Revision,
     /// 0-based, matching `PageInfo::index`.
     pub page: u32,
-    /// Pixels per CSS pixel; 2.0 on a retina display.
+    /// Pixels per CSS pixel: 1.0 is 96 dpi, 2.0 a retina display.
+    ///
+    /// Typst measures in points, not CSS pixels, so a renderer must convert
+    /// by 96/72. Getting this wrong makes every preview 33% off and nothing
+    /// complains, which is why the unit is spelled out here.
     pub scale: f32,
     pub format: RenderFormat,
 }

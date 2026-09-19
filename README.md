@@ -1,5 +1,7 @@
 # Booker
 
+[![CI](https://github.com/can3p/booker/actions/workflows/ci.yml/badge.svg)](https://github.com/can3p/booker/actions/workflows/ci.yml)
+
 Book authoring for people who want a good-looking book without learning typesetting.
 
 A Booker project is a plain folder: Markdown for the text, a few readable TOML files for how it should look. It lives in git, opens in any editor, and builds into a print-ready PDF. The layout engine is [Typst](https://typst.app), embedded in the application, so a 200-page novel lays out in about half a second.

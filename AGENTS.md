@@ -19,7 +19,9 @@ This file is the standing instruction for any agent session. Read it first, foll
 | `docs/FINDINGS.md` | Things learned along the way that a future session would otherwise rediscover | Agents, as they learn them |
 | `docs/waves/wave-N.md` | The brief for one wave: tracks, owned paths, contracts, done criteria | Wave lead, before tracks start |
 
-**Starting a session:** read `docs/PLAN.md` §8 (waves) and `docs/WAVE-LOG.md` to see what is finished, then `git branch -a` to see what is in flight, then the brief for the current wave. Say which wave and track you are on before you start changing files.
+**Starting a session:** read `docs/WAVE-LOG.md` (what is finished), then `docs/PLAN.md` §8 (the waves), then `git branch -a` (what is in flight), then the brief for the current wave in `docs/waves/`. Say which wave and track you are on before you start changing files.
+
+**Where things stand today:** Wave 0 is complete and merged — the core works end to end, `booker new` then `booker build` writes a PDF. **Wave 1 is the next one to start**, and its brief is `docs/waves/wave-1.md`: the desktop application and the release pipeline. Rust lives in `~/.cargo/bin`, which is not on the default PATH — run `. "$HOME/.cargo/env"` first.
 
 ## 2. Which document gets the write
 
@@ -49,7 +51,7 @@ A **track** is done when: the feature works, it has tests (§6), `cargo fmt`, `c
 A **wave** is done when, on top of every track being done:
 
 1. The demo named in `docs/PLAN.md` for that wave can be performed end to end by a person who did not build it.
-2. From Wave 6 on: the MCP conformance suite is green in CI, and the eval scenarios — including the one this wave added — have been run by hand, with the result recorded in the wave log.
+2. From Wave 7 on: the MCP conformance suite is green in CI, and the eval scenarios — including the one this wave added — have been run by hand, with the result recorded in the wave log.
 3. Installers build on macOS, Windows and Linux in CI, signed where signing is configured.
 4. **The previous release updates itself to the new one.** Install the previous version, run the updater, confirm it lands on the new build. Every wave ships through the updater; this is the one check that must never be skipped.
 5. A project made by the previous version still opens, and a project made by this version opens in the previous version without losing data (unknown keys are preserved, §7).
@@ -74,7 +76,7 @@ git worktree remove ../booker-wt/w0-engine     # after the merge
 - **Every feature ships with tests.** Rust: unit tests next to the code, integration tests per crate. UI: component tests for logic, not for pixels.
 - **Golden tests are the backbone of layout work**: fixture project → rendered pages → PNG snapshot compared with a pixel tolerance. Each track owns its own fixture folder (snapshots are binary and merge badly). Regenerate deliberately, review the images before committing.
 - Bug fixes start with a failing test.
-- **Integration tests cover the agent surface, not just the core.** From Wave 6 on, every pull request runs the MCP conformance suite: a real client over stdio, the tool list checked against the capability manifest (they must not drift), every tool schema valid, each read tool's MCP result equal to the CLI's JSON for the same question, refusals for paths outside the project, clean errors instead of panics, and deterministic output — sorted keys, project-relative paths, no timestamps. It runs on all three platforms, because Windows differs in paths and stdio buffering.
+- **Integration tests cover the agent surface, not just the core.** From Wave 7 on, every pull request runs the MCP conformance suite: a real client over stdio, the tool list checked against the capability manifest (they must not drift), every tool schema valid, each read tool's MCP result equal to the CLI's JSON for the same question, refusals for paths outside the project, clean errors instead of panics, and deterministic output — sorted keys, project-relative paths, no timestamps. It runs on all three platforms, because Windows differs in paths and stdio buffering.
 - **Agent evals live in `evals/` in this repository and are never part of the shipped application** — they are a development harness, like the golden tests, run with `cargo xtask eval`. **By hand, at the end of a wave and before a release, never on a schedule** (each run costs model time and needs an API key). Each scenario is a fixture project, a prompt phrased as a person would phrase it, and a programmatic success check, so the assertion stays deterministic even though the agent is not. A scenario should pass in at least four runs out of five; the result goes in the wave log, and a drop in the pass rate is a reason not to release. The harness also records how many turns were used and which discovery commands (`capabilities`, `explain`, `recipe`) the agent reached for — that is how we find out where the vocabulary is failing people.
 - **A wave that adds a user-facing capability adds at least one eval scenario for it**, phrased as a user request rather than as an instruction to use a feature. If a capability cannot be described as something a person would ask for, question whether it belongs.
 - CI runs fmt, clippy with warnings denied, tests, the golden suite, the frontend lint and test steps, and the three installer builds.

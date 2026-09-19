@@ -314,7 +314,7 @@ Key technical choices:
 - **Composed pages** become a Typst page whose body is a stack of `place(dx:, dy:)` boxes — a direct, predictable mapping, and the part of the system we have the most control over.
 - **Frame chains are core, not an extra.** Text continues from frame to frame on its own, so the chain engine carries weight: `meander` (MIT, so we can vendor it and fork it if we must, ideally contributing fixes back) does exactly this today, and Typst's `measure` tells us whether content fits, which drives shrink-to-fit and the "nothing is left to hold this text" warning. Wave 0 spikes it and reports whether we lean on the package, fork it, or write our own chain layout. Same machinery serves flow mode, composed pages, margin notes and pull-out boxes, so it is worth doing properly once.
 - **Dragging must round-trip.** The preview knows each frame's identity, so a drag edits exactly the attribute or `layouts.toml` entry it came from, in millimetres rounded to one decimal, leaving the rest of the file untouched.
-- **Good typography without asking.** From Wave 1 the defaults are the ones a book should have anyway: justified text with hyphenation in the book's language, protection against single lines stranded at the top or bottom of a page, proper quotation marks and dashes for the language, ligatures and kerning on. Typst gives us all of these (its `costs` control for stranded and over-short lines, `hypher` hyphenation patterns, OpenType features), so the work is picking defaults per template, not building machinery. The knobs appear in Wave 2, the fine control in Wave 9; an amateur never has to touch any of it.
+- **Good typography without asking.** From Wave 2 the defaults are the ones a book should have anyway: justified text with hyphenation in the book's language, protection against single lines stranded at the top or bottom of a page, proper quotation marks and dashes for the language, ligatures and kerning on. Typst gives us all of these (its `costs` control for stranded and over-short lines, `hypher` hyphenation patterns, OpenType features), so the work is picking defaults per template, not building machinery. The knobs appear in Wave 3, the fine control in Wave 10; an amateur never has to touch any of it.
 - **Fonts:** a curated bundled set of open fonts (e.g. Literata, EB Garamond, Source Serif 4, Inter, Atkinson Hyperlegible, Andika for kids, Cinzel Decorative for initials), plus project fonts and system fonts. The problems panel warns when the project uses a system-only font and offers "copy into project".
 - **Contracts first:** `Doc AST`, `ResolvedStyle`, and the IPC command types are defined in Rust and exported to TypeScript (`ts-rs`). These contracts are frozen at the start of each wave so the tracks can work in parallel.
 
@@ -342,22 +342,33 @@ Model tiers used below:
 - **M (mid: Sonnet):** features with a clear spec, UI panels, exporters.
 - **S (small: Haiku):** boilerplate, CI YAML, fixtures, golden tests from a template, docs, theme/template content, i18n strings, icon wiring, lint fixes.
 
-### Wave 0: Skeleton and delivery pipeline
-**Demo:** install the app, open a folder containing `book.md`, see paged PDF pages in the preview, export a PDF. Publish v0.0.2 and watch v0.0.1 update itself.
+### Wave 0: The core — engine, format, command line ✅ done
+**Shipped:** `booker new` creates a book, `booker build` lays it out and writes a PDF. No application yet — this is the spine everything else stands on. See `docs/WAVE-LOG.md`.
 
 | Track | Work | Tier |
 |---|---|---|
-| A. Release | CI matrix, signing hooks, `tauri-action`, updater config, `latest.json` publishing, beta channel | M (YAML: S) |
-| B. Shell | Tauri + Svelte scaffold, window layout (sidebar, editor, preview), open-folder dialog, recent projects | M |
-| C. Engine spike | Embed Typst (`World` impl, fonts, in-memory files), compile to PDF, render PNG tiles, `booker://` protocol | L |
-| D. Solver spike | Show that "image on the previous page relative to an anchor" converges on 3 test documents | L |
-| D2. Frame spike | Absolute `place`d frames; measure whether text fits; shrink-to-fit; text continuing into a second frame (`meander`); drag coordinates round-tripping into a file | L |
-| E. Format | ADR for this format, Markdown parser spike (source spans + attributes), `booker-project` skeleton, `booker new` | L (spec) / M |
-| F. Hygiene | MIT license, README, CONTRIBUTING, third-party notices (Typst is Apache-2.0, packages and fonts checked), rustfmt/clippy/eslint/prettier, issue templates, app icons | S |
+| Contracts | Shared types: geometry, project config, diagnostics, compile and render requests, the IPC command list | L |
+| C. Typst engine | Typst 0.15.1 embedded: `World` over a project, fonts, compile to PDF, render pages, incremental recompilation | L |
+| E. Format and CLI | `book.toml` round-tripping with comments and unknown keys preserved, Markdown with reliable source positions, `booker new` and `booker build`, fixtures | L/M |
+| Bridge | A minimal document-model-to-Typst translation so the wave ends with a real PDF (replaced by Wave 2 track B) | L |
 
-Exit criteria: all three OSes install and update, and all three spikes have a written go/no-go.
+**Measured:** 520–570 ms cold compile of a 201-page novel, 24–29 ms after a one-character edit. That is what makes the live preview in Wave 2 possible.
 
-### Wave 1: "Write a simple book" (MVP)
+### Wave 1: The application and how it reaches people
+**Demo:** download Booker, install it on macOS, Windows or Linux, open a folder, see the book's pages, export a PDF. Then publish the next version and watch the installed one update itself.
+
+Everything here is independent of everything in Wave 0 except the contracts, which is why it is its own wave.
+
+| Track | Work | Tier |
+|---|---|---|
+| A. Release pipeline | CI matrix, `tauri-action` bundles for all three platforms, signing hooks, updater artifacts, `latest.json` on GitHub Releases, a beta channel | M (YAML: S) |
+| B. Application shell | Tauri 2 + Svelte 5 + TypeScript: window layout (chapter sidebar, editor pane, preview, status bar, problems panel), open-folder, recent projects, "Check for updates…" | M |
+| C. Preview | Page images from the engine over the `booker://` protocol, visible-page rendering, zoom, scroll — the app's first real use of the Wave 0 core | M |
+| D. Hygiene | Third-party notices (Typst Apache-2.0, bundled font licences), `cargo metadata` smoke check in CI, issue templates, icons, a pre-push hook refusing direct pushes to `main` | S |
+
+Exit criteria: installers built by CI for all three platforms; **a previous release updates itself to the new one**; the app opens a project and shows its pages.
+
+### Wave 2: "Write a simple book" (MVP)
 **Demo:** create a novel from a template, write chapters (or edit them in VS Code and watch the preview follow), get a table of contents, and export a good-looking PDF.
 
 | Track | Work | Tier |
@@ -370,7 +381,7 @@ Exit criteria: all three OSes install and update, and all three spikes have a wr
 | F. Templates & fonts | 4 starter templates (novel, picture book, poetry, short paper), bundled font set + licenses | S (content) / M (wiring) |
 | G. Tests & CLI | Golden tests: fixture projects → PNG snapshots with pixel diff; `booker build`, and the first `booker check` rules (missing files, unresolved references) | S (fixtures) / M (harness) |
 
-### Wave 2: Styles
+### Wave 3: Styles
 **Demo:** click a heading, change it to bold 18 pt Arial on a green background, and see every heading update. Add a drop cap from an image to each chapter.
 
 | Track | Work | Tier |
@@ -380,10 +391,10 @@ Exit criteria: all three OSes install and update, and all three spikes have a wr
 | C. Inspector UI | Style panel (with "where does this value come from?"), class picker, "apply to all similar" | M |
 | D. HTML subset | Whitelisted inline HTML → styles; warnings for unsupported HTML | M |
 | E. Font manager | Bundled/project/system list, preview, "copy into project", fallback warnings | M |
-| F. Typography controls | The everyday knobs on top of the Wave 1 defaults: hyphenation on/off plus a project word list, justification, line spacing, spacing between paragraphs, stranded-line strictness, small caps, all per style | M |
+| F. Typography controls | The everyday knobs on top of the Wave 2 defaults: hyphenation on/off plus a project word list, justification, line spacing, spacing between paragraphs, stranded-line strictness, small caps, all per style | M |
 | G. Themes | 3 more themes that use the new style features, documentation pages | S |
 
-### Wave 3: Pages, templates and rules
+### Wave 4: Pages, templates and rules
 **Demo:** every odd page gets a cream background, chapter openings get a full-bleed vine image with no header, and running heads show the chapter title. All of this comes from rules, not manual edits.
 
 | Track | Work | Tier |
@@ -395,7 +406,7 @@ Exit criteria: all three OSes install and update, and all three spikes have a wr
 | E. Template editor UI | Visual editor for page templates (header/footer slots, background, layers) | M |
 | F. Fixtures | Golden tests for rule combinations | S |
 
-### Wave 4: Composed pages — frames, free placement, direct manipulation
+### Wave 5: Composed pages — frames, free placement, direct manipulation
 **Demo:** make a kids book page by page: pick "picture on top, text below" from the gallery, then drag the text box somewhere else on the next page, put a cut-out cat at an angle over the picture, and save the arrangement as a reusable layout.
 
 | Track | Work | Tier |
@@ -409,7 +420,7 @@ Exit criteria: all three OSes install and update, and all three spikes have a wr
 
 Exit criteria: a 24-page picture book can be laid out end to end without touching a text file by hand, and its `layouts.toml` diff stays readable.
 
-### Wave 5: Images and anchoring in flowing text
+### Wave 6: Images and anchoring in flowing text
 **Demo:** anchor a flower photo to the word "flowers", choose "same page, top", and it follows the text as you edit. Wrap text around a cut-out image. Drag and drop images into the editor.
 
 | Track | Work | Tier |
@@ -420,7 +431,7 @@ Exit criteria: a 24-page picture book can be laid out end to end without touchin
 | D. External editing | "Open in default editor", reload on change, image optimization hints | S/M |
 | E. Tests | Solver stress fixtures (many anchors, conflicting constraints) | S (fixtures) / L (review) |
 
-### Wave 6: Diagnostics and the agent surface
+### Wave 7: Diagnostics and the agent surface
 **Demo:** break a book on purpose — delete an image file, overflow a caption, point an anchor at a phrase that no longer exists — then tell Claude Code in that folder "the layout looks broken, analyse the errors and fix them". It runs `booker check`, sees exactly what is wrong and where in the source, fixes it, and the app, still open, reloads and shows the result.
 
 | Track | Work | Tier |
@@ -438,7 +449,7 @@ Exit criteria: a 24-page picture book can be laid out end to end without touchin
 
 Exit criteria: while the app is open, an outside process rewriting every file in the project leaves the app correct and responsive; `booker check` finds every fault in the "deliberately broken book" fixture and `booker fix --safe` repairs the mechanical ones; and an agent given only the project folder and the CLI can add a drop cap, move an image to a fixed position and make chapters start on the right — without being told the format beforehand. That last one is the real test, and it is the first scenario in the eval harness.
 
-### Wave 7: The furniture of a book
+### Wave 8: The furniture of a book
 **Demo:** a novel with footnotes, an epigraph, a proper copyright page, ornaments between scenes, and a non-fiction book with margin notes, a bibliography and an index.
 
 | Track | Work | Tier |
@@ -452,7 +463,7 @@ Exit criteria: while the app is open, an outside process rewriting every file in
 
 These are independent of each other: good wave for many parallel tracks.
 
-### Wave 8: Outputs and publishing
+### Wave 9: Outputs and publishing
 **Demo:** one click exports a print PDF, a website and an EPUB. Pushing to GitHub builds the PDF in CI.
 
 | Track | Work | Tier |
@@ -463,18 +474,18 @@ These are independent of each other: good wave for many parallel tracks.
 | D. CLI & CI | `booker build --preset`, published GitHub Action, sample workflow in templates | S/M |
 | E. Accessibility | PDF/UA tagging, alt-text prompts for images | M |
 
-### Wave 9: Fine typography and print production
+### Wave 10: Fine typography and print production
 **Demo:** send a file to a print shop that asks for CMYK with a colour profile, with facing pages whose lines sit on the same baseline, and a cover whose spine width matches the page count.
 
 | Track | Work | Tier |
 |---|---|---|
 | A. Fine typography | Baseline grid across facing pages, hanging punctuation and optical margins, word and letter spacing limits, OpenType feature panel (old-style figures, alternates, swashes), per-language hyphenation exceptions | L |
 | B. Copy-fitting | Per-paragraph and per-page nudges made while looking at the render: tighten or loosen, pull a line back, keep lines together, "make this page end here", all listed in an overrides panel | M |
-| C. Colour management | A colour value that knows its space (already in the model from Wave 2), CMYK and spot colours, an ICC profile in the project, output intent, PDF/X export. **Typst has CMYK colours but no ICC or output intent yet**, so this runs as a post-processing step (Ghostscript or an ICC library) behind one export hook | L |
+| C. Colour management | A colour value that knows its space (already in the model from Wave 3), CMYK and spot colours, an ICC profile in the project, output intent, PDF/X export. **Typst has CMYK colours but no ICC or output intent yet**, so this runs as a post-processing step (Ghostscript or an ICC library) behind one export hook | L |
 | D. Covers | A cover project (front, spine, back) with spine width computed from page count and paper, bleed, barcode/ISBN placement | M |
 | E. Preflight | Expanded checks: stranded lines, overflowing frames, low-resolution images, unembedded fonts, content outside the safe area, missing alt text, colour space mismatches | M |
 
-### Wave 10: Extensibility and polish (→ 1.0)
+### Wave 11: Extensibility and polish (→ 1.0)
 | Track | Work | Tier |
 |---|---|---|
 | A. Git-adjacent, not git | No git UI in 1.0: generated `.gitignore`/`.gitattributes`, "Open project folder / in terminal", a short guide on using GitHub with Booker, and making sure outside changes always reload cleanly | S/M |
@@ -489,7 +500,7 @@ These are independent of each other: good wave for many parallel tracks.
 2. One worktree and one branch per track — see §14 for the mechanics. Tracks only touch their own crates or UI folders. Shared files (`Cargo.toml`, the IPC registry) change only in the integration step.
 3. Each S-tier task comes as a ticket with input files, expected output, and a command to verify it (e.g. "add fixture X; `cargo test -p booker-typst golden::x` must pass").
 4. Integration step: merge, run the full golden suite on 3 OSes, tag the release, and confirm the previous build updates to it.
-5. **Every wave ships the diagnostic rules for what it added.** A way for a book to break that Booker cannot name and locate is unfinished work — from Wave 6 on, that means rules in the registry; before it, at least a clear message in the problems panel.
+5. **Every wave ships the diagnostic rules for what it added.** A way for a book to break that Booker cannot name and locate is unfinished work — from Wave 7 on, that means rules in the registry; before it, at least a clear message in the problems panel.
 
 ---
 
@@ -499,28 +510,28 @@ The shape of the argument: **the things that make a book look right by itself co
 
 | Feature | When | Note |
 |---|---|---|
-| Justified text, hyphenation, real quotation marks, ligatures, protection against stranded lines | **Wave 1, on by default** | Nearly free with Typst; this is most of what separates an amateur-looking page from a decent one |
+| Justified text, hyphenation, real quotation marks, ligatures, protection against stranded lines | **Wave 2, on by default** | Nearly free with Typst; this is most of what separates an amateur-looking page from a decent one |
 | Chapters, table of contents, page numbers, running heads | Waves 1–3 | |
-| Text styles, drop caps, first-line styling | Wave 2 | |
-| Everyday typography knobs per style | Wave 2 | Hyphenation on/off, spacing, stranded-line strictness |
-| Page rules, master pages, facing pages, bleed | Wave 3 | |
-| Free placement, frames, text flowing between them, layout gallery | Wave 4 | |
-| Anchored images, text wrapping around images, captions | Wave 5 | |
-| Footnotes and endnotes | Wave 7 | |
-| **Margin notes / side notes** | Wave 7 | Falls out of the frame-chain model: a frame in the outside margin |
-| Cross-references, figure numbering, lists of figures | Wave 7 | |
-| **Bibliography and citations** | Wave 7 | Typst has this natively; we map `[@key]` and a `references.bib` in the project |
-| Index, glossary | Wave 7 | |
-| Front and back matter (title, copyright, dedication, epigraph, colophon, appendix) | Wave 7 | Mostly templates and numbering rules |
-| **Vignettes and ornaments** (scene breaks, chapter flourishes) | Wave 7 | Style and page-rule features plus a bundled ornament set |
-| `booker check`: first rules (missing files, unresolved references) | Wave 1 | Grows one wave at a time |
-| **Full diagnostics, CLI and MCP server for agents** | Wave 6 | Rule IDs, source locations, page renders, `fix --safe` |
-| HTML, EPUB (reflowable and fixed-layout), CLI builds | Wave 8 | |
-| Accessibility: alt text, tagged PDF | Wave 8 | The document model carries roles from Wave 1, so tagging is a rendering concern |
-| Baseline grid, optical margins, OpenType feature control | Wave 9 | For people who care; invisible to everyone else |
-| Copy-fitting overrides made while watching the render | Wave 9 | |
-| **CMYK, spot colours, ICC profiles, PDF/X** | Wave 9 | Needs a post-processing step; see §10 |
-| Cover with computed spine width, ISBN barcode | Wave 9 | |
+| Text styles, drop caps, first-line styling | Wave 3 | |
+| Everyday typography knobs per style | Wave 3 | Hyphenation on/off, spacing, stranded-line strictness |
+| Page rules, master pages, facing pages, bleed | Wave 4 | |
+| Free placement, frames, text flowing between them, layout gallery | Wave 5 | |
+| Anchored images, text wrapping around images, captions | Wave 6 | |
+| Footnotes and endnotes | Wave 8 | |
+| **Margin notes / side notes** | Wave 8 | Falls out of the frame-chain model: a frame in the outside margin |
+| Cross-references, figure numbering, lists of figures | Wave 8 | |
+| **Bibliography and citations** | Wave 8 | Typst has this natively; we map `[@key]` and a `references.bib` in the project |
+| Index, glossary | Wave 8 | |
+| Front and back matter (title, copyright, dedication, epigraph, colophon, appendix) | Wave 8 | Mostly templates and numbering rules |
+| **Vignettes and ornaments** (scene breaks, chapter flourishes) | Wave 8 | Style and page-rule features plus a bundled ornament set |
+| `booker check`: first rules (missing files, unresolved references) | Wave 2 | Grows one wave at a time |
+| **Full diagnostics, CLI and MCP server for agents** | Wave 7 | Rule IDs, source locations, page renders, `fix --safe` |
+| HTML, EPUB (reflowable and fixed-layout), CLI builds | Wave 9 | |
+| Accessibility: alt text, tagged PDF | Wave 9 | The document model carries roles from Wave 2, so tagging is a rendering concern |
+| Baseline grid, optical margins, OpenType feature control | Wave 10 | For people who care; invisible to everyone else |
+| Copy-fitting overrides made while watching the render | Wave 10 | |
+| **CMYK, spot colours, ICC profiles, PDF/X** | Wave 10 | Needs a post-processing step; see §10 |
+| Cover with computed spine width, ISBN barcode | Wave 10 | |
 | Tables, code blocks, mathematics | Waves 1–2 (basic), later refinement | Typst gives mathematics and tables cheaply |
 | Verse and lyrics, dialogue conventions, recipes | As templates and classes, any wave | User-level, not engine-level |
 | Beyond 1.0 | | Vertical CJK text, shared template gallery, collaboration, plugin API, print-shop integrations |
@@ -529,7 +540,7 @@ The shape of the argument: **the things that make a book look right by itself co
 
 None of the following costs much now, and each one is expensive to retrofit:
 
-1. **A colour is a value with a colour space**, not a hex string: `#2a6`, `cmyk(...)`, `spot("Pantone 185 C")`. `book.toml` reserves `color-space` and `icc-profile`. Wave 2 stores and round-trips them even though only sRGB renders.
+1. **A colour is a value with a colour space**, not a hex string: `#2a6`, `cmyk(...)`, `spot("Pantone 185 C")`. `book.toml` reserves `color-space` and `icc-profile`. Wave 3 stores and round-trips them even though only sRGB renders.
 2. **Export runs through one hook** after Typst produces the PDF, so ICC conversion, PDF/X output intents or an imposition step slot in without touching codegen.
 3. **Unknown keys in project files are preserved, not dropped.** An older Booker opening a project made by a newer one keeps what it doesn't understand, warns, and writes it back unchanged. This is what makes the format survive years of feature growth.
 4. **The document model carries meaning, not just looks**: a note is a note, a citation is a citation, a caption is a caption. Accessibility tagging, EPUB semantics and the index all read from that later.
@@ -660,9 +671,9 @@ Policy: MCP conformance is an ordinary integration test suite — cheap, determi
 | Anchor solver fails to converge | Images land on the wrong page | Spike in Wave 0; limit the number of passes; report the problem clearly; manual "pin to page" fallback |
 | Text-wrap quality (`meander`) | Awkward layout | Use it only when asked; default to floats; upstream fixes |
 | Frame chains carry the whole layout model, and today they rest on one package | Text stops continuing between frames | `meander` is MIT, so we can vendor, fork and contribute back; Wave 0 spikes it and decides between package, fork and our own chain layout; the manual overrides (break here, shrink, stop) are the escape hatch in every case |
-| Colour management (CMYK, ICC, PDF/X) is missing in Typst | A print shop rejects the file | Colours carry their space in the model from Wave 2, so nothing has to be retrofitted; the actual conversion is a post-processing step behind one export hook (§10.2, Wave 9); most print-on-demand services accept RGB today |
-| Fine typography (baseline grid, optical margins) is not native | Books look slightly less refined than InDesign output | Typst already gives hyphenation, justification and stranded-line control, which is most of the visible quality; the rest is Wave 9 and does not block anything earlier |
-| An outside agent and the app edit the same file at the same moment | A change is lost | Eager autosave, atomic writes, echo suppression, and both versions offered rather than one discarded; Wave 6 stress-tests exactly this |
+| Colour management (CMYK, ICC, PDF/X) is missing in Typst | A print shop rejects the file | Colours carry their space in the model from Wave 3, so nothing has to be retrofitted; the actual conversion is a post-processing step behind one export hook (§10.2, Wave 10); most print-on-demand services accept RGB today |
+| Fine typography (baseline grid, optical margins) is not native | Books look slightly less refined than InDesign output | Typst already gives hyphenation, justification and stranded-line control, which is most of the visible quality; the rest is Wave 10 and does not block anything earlier |
+| An outside agent and the app edit the same file at the same moment | A change is lost | Eager autosave, atomic writes, echo suppression, and both versions offered rather than one discarded; Wave 7 stress-tests exactly this |
 | Diagnostics that are vague ("something overflows on page 12") | Neither person nor agent can act on them | Every rule must carry a source location; a rule without one does not ship |
 | Drag-and-drop editing fights hand-edited files | Users lose their formatting or their edits | Frames carry stable IDs; writes are targeted and keep comments; every drag is one undo step and one small diff |
 | PDF/X or CMYK needed by some printers | Print shop rejects the file | Most POD services (KDP, IngramSpark, Lulu) accept RGB PDF; verify Typst's roadmap; a post-processing step with Ghostscript as an optional external tool |
@@ -676,10 +687,10 @@ Settled (2026-09-19):
 
 1. **Repository** `github.com/can3p/booker`; app ID `com.github.can3p.booker` for now — no domain needed.
 2. **Signing accounts** (Apple Developer, Windows) are owned by you; set up during Wave 0.
-3. **EPUB is in scope** — reflowable for flowing books, fixed-layout for composed ones (Wave 7).
+3. **EPUB is in scope** — reflowable for flowing books, fixed-layout for composed ones (Wave 8).
 4. **License: MIT.** Typst is Apache-2.0 and stays a dependency, so the build ships a third-party notices file; bundled fonts keep their own licences (OFL and similar).
 5. **No git features inside the app for 1.0.** The format stays git-friendly and outside changes reload cleanly.
-6. **Free placement is a first-class feature**, not an escape hatch (§5.6, Wave 4).
+6. **Free placement is a first-class feature**, not an escape hatch (§5.6, Wave 5).
 
 Still open: tracked in `docs/OPEN-QUESTIONS.md`, each with the default we proceed with in the meantime. The ones outstanding today are the final app name and bundle identifier (must be settled before the first public release), the bundled font set, whether print targets need CMYK or PDF/X, spell-checking, and how shared templates are distributed.
 

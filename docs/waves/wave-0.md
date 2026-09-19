@@ -1,6 +1,8 @@
-# Wave 0 — Skeleton and delivery pipeline
+# Wave 0 — The core: engine, format, command line ✅ complete
 
-Branch: `wave-0` (off `main`) · Finishes as one pull request into `main`, tagged `v0.1.0`
+Branch: `wave-0`, merged into `main`. What actually shipped is in `docs/WAVE-LOG.md`.
+
+**Scope changed during the wave:** the application shell, the release pipeline and repository hygiene (originally tracks A, B and F here) turned out to be independent of the core and became their own wave — see `docs/waves/wave-1.md`. What remained was the engine (C), the format and CLI (E), and a bridge between them.
 
 Read `AGENTS.md` before starting. This brief assigns the tracks, the paths each one owns, and what "done" means for each.
 

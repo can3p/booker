@@ -1,0 +1,4 @@
+# The smallest book that is still a book: one file, one title.
+format = 1
+title = "A Very Short Book"
+language = "en"

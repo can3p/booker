@@ -24,35 +24,35 @@ Format:
 
 ### Q-02 — Which fonts to bundle
 - Raised: 2026-09-19, planning
-- Needed by: Wave 1 (starter templates pick their fonts)
+- Needed by: Wave 2 (starter templates pick their fonts)
 - Options: a small set covering a serif for fiction, a text face for non-fiction, a friendly face for kids books, a sans for UI and captions, and a decorative face for initials. Licences must permit redistribution and embedding (OFL and similar).
 - Default we are proceeding with: Literata, EB Garamond, Source Serif 4, Inter, Atkinson Hyperlegible, Andika (kids), Cinzel Decorative (initials) — reviewed for licence in Wave 1.
 - Status: Open
 
 ### Q-03 — Do print-on-demand targets need CMYK, ICC or PDF/X?
 - Raised: 2026-09-19, planning
-- Needed by: Wave 9 (colour management), but affects which presets we advertise earlier
+- Needed by: Wave 10 (colour management), but affects which presets we advertise earlier
 - Context: Typst has CMYK colours but no ICC profiles, output intent or PDF/X. Amazon KDP, IngramSpark and Lulu accept RGB PDFs today; traditional print shops often do not.
 - Default we are proceeding with: RGB output, colour values that carry their colour space from Wave 2 so conversion can be added as a post-processing step later.
 - Status: Open
 
 ### Q-04 — Spell-checking
 - Raised: 2026-09-19, planning
-- Needed by: Wave 10
+- Needed by: Wave 11
 - Options: rely on the system webview's spell-checker (free, but behaves differently on each platform, and Linux support varies), or bundle a dictionary-based checker in the core (consistent, more work, larger download).
 - Default we are proceeding with: system spell-checker, revisited if Linux behaviour is poor.
 - Status: Open
 
 ### Q-05 — Where do shared templates and themes come from?
 - Raised: 2026-09-19, planning
-- Needed by: Wave 10
+- Needed by: Wave 11
 - Options: install from any git URL only; or a curated list in a repository we control; or a gallery site.
 - Default we are proceeding with: install from a git URL, plus the bundled templates.
 - Status: Open
 
 ### Q-06 — How far should the agent surface be allowed to write?
 - Raised: 2026-09-19, planning
-- Needed by: Wave 6
+- Needed by: Wave 7
 - Context: agents already edit Markdown and TOML well with their own tools. What they lack is truth about the rendered result. A large write API would mostly be a worse way to edit a text file, but "fix it for me" is a natural request.
 - Options: read-mostly (`fmt` and `fix --safe` only); or a full write API (set a style, move a frame, apply a layout); or read-mostly by default with writes behind an explicit flag.
 - Refined 2026-09-19: the question largely dissolves if agents can *discover* the vocabulary instead of guessing at it (`docs/PLAN.md` §11.4: generated schemas, a capability manifest, `explain`, recipes, and errors that suggest the right key). Then the useful write tools are only the ones needing the layout engine in the loop — applying a diagnostic's patch, and fit-and-iterate adjustments such as "shrink until the text fits".
@@ -61,7 +61,23 @@ Format:
 
 ### Q-07 — Should a running app expose the agent tools too?
 - Raised: 2026-09-19, planning
-- Needed by: after Wave 6
+- Needed by: after Wave 7
 - Context: `booker mcp` works headless on a folder, which covers most cases. Letting an agent talk to the *running* app would mean it can act on what the user is currently looking at, and the user sees changes land live — at the cost of a local socket, a token, and a permissions story.
 - Default we are proceeding with: ship the headless CLI/MCP path first, decide on the app-attached variant once people have used it.
+- Status: Open
+
+### Q-08 — How does an author write a page size?
+- Raised: 2026-09-19, Wave 0 track E
+- Needed by: Wave 2 (templates write `book.toml`)
+- Context: `PLAN.md` §5.2 shows `size = "8.5x8.5in"`, but the `PageSize` type is either a named preset or `{ width, height }`. The loader currently accepts all three, which means three ways to write one thing.
+- Options: make the string form canonical and the table form the escape hatch; or the reverse; or keep all three and say so in the schema.
+- Default we are proceeding with: all three accepted, presets preferred in anything Booker generates.
+- Status: Open
+
+### Q-09 — Must a book have a title?
+- Raised: 2026-09-19, Wave 0 track E
+- Needed by: Wave 2
+- Context: `BookConfig::title` is not optional, so a `book.toml` without one loads as an empty string and the CLI prints "(untitled)". Nothing treats that as an error.
+- Options: make it `Option<String>`; or keep it required and add a `format.*` diagnostic saying a book needs a title; or leave it.
+- Default we are proceeding with: leave it, and revisit when the diagnostics engine exists (Wave 7).
 - Status: Open

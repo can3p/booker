@@ -1,0 +1,21 @@
+[package]
+name = "booker-typst"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Booker's layout engine: a Typst World over a project folder, compiled and rendered in process."
+
+[dependencies]
+booker-core = { workspace = true }
+comemo = { workspace = true }
+typst = { workspace = true }
+typst-kit = { workspace = true }
+typst-layout = { workspace = true }
+typst-pdf = { workspace = true }
+typst-render = { workspace = true }
+typst-svg = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

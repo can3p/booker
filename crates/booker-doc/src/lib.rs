@@ -52,3 +52,13 @@ impl Document {
         LineIndex::new(source).source_location(source, file, span)
     }
 }
+
+// Deliberate breakage, on a throwaway branch: this proves the fmt job and the
+// clippy job are wired to something. Never merged.
+#[allow(dead_code)]
+fn   badly_formatted_on_purpose( ) ->   u8 { 1 }
+
+#[allow(dead_code)]
+fn clippy_bait(v: &Vec<u8>) -> usize {
+    v.len()
+}

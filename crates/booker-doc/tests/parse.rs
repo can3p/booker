@@ -41,3 +41,8 @@ fn a_loose_list_item_is_not_doubled() {
         );
     }
 }
+
+#[test]
+fn deliberately_failing_check_that_ci_notices() {
+    assert_eq!(2 + 2, 5, "this test exists to prove the test job is wired up");
+}

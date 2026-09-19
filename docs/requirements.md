@@ -39,6 +39,11 @@ fighting too much with the image layouts and endless settings.
   text talking about flowers, it should be possible to add an image, align it to the top
   of the page and define something like (this photo should always be on the same, previous
   or next page relatively to the phrase)
+* Free placement must stay available: a user should be able to put an image at an
+  absolute position on a page and to set the position and size of text frames.
+  Imagine a kids book where the text sits in a different place on every page, or a
+  page with one big image on top and the text below. Flowing text is the default,
+  not the only option.
 * The output should be as simple as an HTML or ready to print PDF.
 
 ## Functional requirements

@@ -251,11 +251,17 @@ Problems: none
 Built build/the-moon-in-a-jar.pdf — 2 pages in … ms
 ```
 
-Two chapters, two pages, your words. Open the PDF again and look at it: each chapter
-starts on its own page, the title sits above the text with space around it, the
-paragraphs are indented after the first one, and the margins are wider at the spine
-than at the outer edge. Nobody set any of that up. Those are the defaults, and they
-are meant to be good enough that you never think about them.
+Two chapters, two pages, your words. Open the PDF again and look at it. Each chapter
+starts on its own page, with its title set larger and bolder than the text. Paragraphs
+are separated by a little space rather than run together. The lines are justified —
+straight down both edges — and long words are hyphenated to make that work, which is
+why `language` matters. The lists and the quotation you wrote came out as a list and a
+quotation.
+
+Now hold the two pages side by side. The white space is wider on the *left* of page one
+and wider on the *right* of page two: that is `facing = true` doing its job, putting the
+generous `inside` margin against the spine on both. Nobody set any of that up. They are
+the defaults, and they are meant to be good enough that you never think about them.
 
 ## 6. Change the shape of the page
 

@@ -64,8 +64,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: Swatinem/rust-cache@v2
+      # --no-fail-fast because one platform-specific failure in an early
+      # test binary would otherwise hide every later one, and a Windows run
+      # costs five minutes to find out one fact at a time.
       - name: Tests
-        run: cargo test --workspace --all-targets --locked
+        run: cargo test --workspace --all-targets --locked --no-fail-fast
       # --all-targets does not run doc tests. This is the second half of
       # `cargo test`, not an extra.
       - name: Doc tests

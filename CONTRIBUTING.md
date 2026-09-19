@@ -27,7 +27,7 @@ TypeScript bindings in `app/src/lib/bindings/` are generated, not edited, and ar
 |---|---|---|
 | `fmt` | The code is formatted | `cargo fmt --all --check` |
 | `clippy` | No warnings, in any target, including tests | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| `test` | The suite passes — and on a pull request into `main`, on macOS, Linux **and** Windows | `cargo test --workspace --all-targets --locked` then `cargo test --workspace --doc --locked` |
+| `test` | The suite passes — and on a pull request into `main`, on macOS, Linux **and** Windows | `cargo test --workspace --all-targets --locked --no-fail-fast` then `cargo test --workspace --doc --locked` |
 | `docs` | `cargo doc` builds with no broken intra-doc links | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked` |
 | `bindings` | The contracts still export TypeScript | `cargo test -p booker-core --locked export_bindings` |
 | `deps` | The workspace manifests parse, and the dependency tree is acceptable | `cargo metadata --locked --format-version 1 > /dev/null` then `cargo deny check bans licenses sources advisories` |

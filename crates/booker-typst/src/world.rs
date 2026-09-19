@@ -253,26 +253,42 @@ fn virtual_path(root: &Path, path: &Path) -> Result<VirtualPath> {
 mod tests {
     use super::*;
 
+    /// An absolute path in the platform's own spelling.
+    ///
+    /// On Windows a path beginning with `/` is *not* absolute — it is
+    /// relative to the current drive — so `/books/mia/content/01.typ` would
+    /// take the relative branch of `virtual_path` and be refused for having
+    /// a root component, testing the opposite of what the test says. These
+    /// tests are about which branch a path takes, so they have to build the
+    /// path the way the platform spells it.
+    fn absolute(path: &str) -> PathBuf {
+        if cfg!(windows) {
+            PathBuf::from(format!(
+                "C:\\{}",
+                path.trim_start_matches('/').replace('/', "\\")
+            ))
+        } else {
+            PathBuf::from(path)
+        }
+    }
+
     #[test]
     fn a_relative_path_names_a_file_in_the_project() {
-        let vpath = virtual_path(Path::new("/books/mia"), Path::new("content/01.typ")).unwrap();
+        let vpath = virtual_path(&absolute("/books/mia"), Path::new("content/01.typ")).unwrap();
         assert_eq!(vpath.get_without_slash(), "content/01.typ");
     }
 
     #[test]
     fn an_absolute_path_inside_the_project_is_accepted() {
-        let vpath = virtual_path(
-            Path::new("/books/mia"),
-            Path::new("/books/mia/content/01.typ"),
-        )
-        .unwrap();
+        let root = absolute("/books/mia");
+        let vpath = virtual_path(&root, &root.join("content").join("01.typ")).unwrap();
         assert_eq!(vpath.get_without_slash(), "content/01.typ");
     }
 
     #[test]
     fn a_path_that_climbs_out_of_the_project_is_refused() {
         for path in ["../secrets.typ", "content/../../secrets.typ"] {
-            let err = virtual_path(Path::new("/books/mia"), Path::new(path)).unwrap_err();
+            let err = virtual_path(&absolute("/books/mia"), Path::new(path)).unwrap_err();
             assert!(
                 err.to_string().contains("outside the project"),
                 "{path}: {err}"
@@ -282,7 +298,7 @@ mod tests {
 
     #[test]
     fn an_absolute_path_elsewhere_is_refused() {
-        let err = virtual_path(Path::new("/books/mia"), Path::new("/etc/passwd")).unwrap_err();
+        let err = virtual_path(&absolute("/books/mia"), &absolute("/etc/passwd")).unwrap_err();
         assert!(err.to_string().contains("outside the project"), "{err}");
     }
 

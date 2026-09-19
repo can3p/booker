@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
         Command::Bindings => {
             anyhow::bail!("run `cargo test -p booker-core export_bindings` for now")
         }
-        Command::Golden => anyhow::bail!("golden snapshots arrive with Wave 1 track G"),
-        Command::Eval { .. } => anyhow::bail!("the eval harness arrives with Wave 6 track I"),
+        Command::Golden => anyhow::bail!("golden snapshots arrive with Wave 2 track G"),
+        Command::Eval { .. } => anyhow::bail!("the eval harness arrives with Wave 7 track I"),
     }
 }

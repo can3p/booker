@@ -1,6 +1,6 @@
 # Wave 1 — The application and how it reaches people
 
-Branch: `wave-1` (off `main`) · Finishes as one pull request into `main`, tagged `v0.2.0`
+Branch: `wave-1` (off `main`, or off `wave-0.5` if that is not merged yet — check first, `AGENTS.md` §3) · Finishes as one pull request into `main`, tagged `v0.2.0`
 
 Read `AGENTS.md` first. This brief assigns the tracks, the paths each owns, and what done means.
 
@@ -8,7 +8,7 @@ Read `AGENTS.md` first. This brief assigns the tracks, the paths each owns, and 
 
 **Demo at the end of the wave:** download Booker, install it on macOS, Windows or Linux, open a folder containing a book, see its pages, export a PDF. Then publish the next version and watch the installed one update itself.
 
-Wave 0 built the core: `booker build` already turns a folder of Markdown into a PDF, in about half a second for a 200-page novel and 25 ms after an edit. This wave puts a window around it and a way to deliver it.
+Wave 0 built the core: `booker build` already turns a folder of Markdown into a PDF, in about half a second for a 200-page novel and 25 ms after an edit. Wave 0.5 put CI around it. This wave puts a window around it and a way to deliver it.
 
 ## What exists already
 
@@ -16,13 +16,15 @@ Wave 0 built the core: `booker build` already turns a folder of Markdown into a 
 - `crates/booker-typst` — `Engine::open(project)`, `set_source`, `compile`, `render` (PNG and SVG, scale in CSS pixels).
 - `crates/booker-project`, `crates/booker-doc`, `crates/booker-cli` — loading, parsing, `booker new`, `booker build`.
 - `booker_core::ipc::page_image_url` — the `booker://page/<revision>/<page>@<scale>x.png` shape the preview should use.
+- `.github/workflows/ci.yml` from Wave 0.5 — fmt, clippy, tests on three platforms, doc build, bindings, `cargo metadata` and `cargo deny`. **Add jobs to it, do not start a second workflow**; the release workflow (track A) is the one new file. The suite is known to pass on macOS, Linux and Windows, so a failure on one platform only is this wave's bug, not a mystery.
+- `.githooks/pre-push`, refusing direct pushes to `main` once `git config core.hooksPath .githooks` has been run (`CONTRIBUTING.md`).
 
 ## Tracks
 
 Each track works in its own worktree (`../booker-wt/w1-<track>`) on branch `w1/<track>`, and merges into `wave-1` by pull request.
 
 ### A. Release pipeline — tier M (YAML tickets: S)
-**Owns:** `.github/workflows/**`, `app/src-tauri/tauri.conf.json` (bundle and updater sections), release documentation.
+**Owns:** `.github/workflows/release.yml` (a new file — `ci.yml` belongs to Wave 0.5 and track D touches it for the frontend jobs), `app/src-tauri/tauri.conf.json` (bundle and updater sections), release documentation.
 Build matrix for macOS (arm64 and x64), Windows x64, Linux x64 (AppImage, deb, rpm) with `tauri-action`. Updater plugin with `createUpdaterArtifacts`, minisign keys in repository secrets, `latest.json` published as a release asset, a beta channel. Signing used when the owner's certificates are present, skipped cleanly when not.
 **Done when:** a tagged push produces installers for all three platforms and a `latest.json`, and an installed `v0.2.0` updates itself to `v0.2.1`.
 
@@ -37,9 +39,11 @@ Page images served over the custom protocol rather than through IPC (base64 thro
 **Done when:** scrolling a 200-page book is smooth, and an edit to a file on disk is visible in the preview.
 
 ### D. Hygiene — tier S
-**Owns:** `THIRD-PARTY.md`, `.github/ISSUE_TEMPLATE/**`, `.githooks/**`, icons, CI lint steps.
-Third-party notices (Typst is Apache-2.0; the bundled font licences are in `crates/booker-typst/fonts/NOTICE.txt`). **A `cargo metadata` smoke check in CI** — Wave 0's integration merged two tracks' dependency lines cleanly and produced a duplicate key, which no textual merge could catch. A pre-push hook refusing direct pushes to `main`. Icons at every required size.
-**Done when:** CI fails on a duplicate dependency, and a direct push to `main` is refused locally.
+**Owns:** `THIRD-PARTY.md`, icons, the frontend jobs in `.github/workflows/ci.yml`.
+Third-party notices (Typst is Apache-2.0; the bundled font licences are in `crates/booker-typst/fonts/NOTICE.txt`), assembled from the licence data `cargo deny` already produces rather than by hand. Icons at every required size, wired into `tauri.conf.json`. `pnpm lint` and `pnpm test` added as jobs in the Wave 0.5 workflow, gated on the app directory so a Rust-only change does not pay for a Node install.
+**Done when:** `THIRD-PARTY.md` covers every bundled dependency and font, the icons appear in the built bundle, and a pull request that breaks `pnpm lint` is red.
+
+*(The `cargo metadata` smoke check and the pre-push hook that were listed here moved to Wave 0.5: they guard a four-track merge, so they have to exist before this wave rather than inside it.)*
 
 ## Order of work
 

@@ -335,7 +335,7 @@ Key technical choices:
 
 ## 8. Development waves
 
-Each wave ends with a signed, installable build for macOS, Windows and Linux, delivered through the updater. Each wave has a **contracts** step (done by the lead model, about 1 day), then **parallel tracks** in separate git worktrees, then an **integration and release** step.
+From Wave 1 on, each wave ends with a signed, installable build for macOS, Windows and Linux, delivered through the updater. Waves 0 and 0.5 come before there is anything to install: they build the core and the checks that guard it. Each wave has a **contracts** step (done by the lead model, about 1 day), then **parallel tracks** in separate git worktrees, then an **integration and release** step.
 
 Model tiers used below:
 - **L (large: Opus):** architecture, contracts, solver, codegen core, tricky integration.
@@ -354,6 +354,21 @@ Model tiers used below:
 
 **Measured:** 520–570 ms cold compile of a 201-page novel, 24–29 ms after a one-character edit. That is what makes the live preview in Wave 2 possible.
 
+### Wave 0.5: Continuous integration
+**Demo:** open a pull request that is unformatted, warns under clippy, fails a test and duplicates a dependency key. CI marks it red four times, each naming what is wrong; fixed, it goes green on macOS, Linux and Windows.
+
+A short wave inserted before Wave 1 because Wave 1 merges four parallel tracks and Wave 0's two-track merge already produced a `Cargo.toml` that merged cleanly and then failed to parse. The check that catches that has to exist before the wave that needs it. It is also where we find out whether the Wave 0 code runs anywhere but one macOS laptop — the suite has never been run on Linux or Windows.
+
+| Track | Work | Tier |
+|---|---|---|
+| A. The workflow | `.github/workflows/ci.yml`: fmt, clippy with warnings denied, tests and doc tests, `cargo doc`, bindings generation; caching, `--locked`, cancel-in-progress; issue and pull-request templates | M (YAML: S) |
+| B. Green off macOS | Making the Wave 0 suite pass on Linux and Windows: bundled fonts, line endings in the round-trip tests, path case sensitivity, whether PDF output differs per platform | M |
+| C. Dependency and repository guards | `cargo metadata` smoke check (the Wave 0 bug), `cargo deny` for advisories, licences and duplicate versions, a pre-push hook refusing direct pushes to `main`, the local-command table in `CONTRIBUTING.md` | S |
+
+**Budget:** no scheduled jobs, ever — everything runs on push and pull request. Lint and dependency jobs run once on Linux; the test matrix widens to macOS and Windows only on pull requests into `main`, which is where the three-platform evidence is actually wanted. Brief: `docs/waves/wave-0.5.md`.
+
+Exit criteria: every pull request runs the full check set; the suite passes on three platforms; each check has been seen to fail on purpose; `CONTRIBUTING.md` gives the local command for every check. No installers and no updater — those start with Wave 1.
+
 ### Wave 1: The application and how it reaches people
 **Demo:** download Booker, install it on macOS, Windows or Linux, open a folder, see the book's pages, export a PDF. Then publish the next version and watch the installed one update itself.
 
@@ -361,10 +376,10 @@ Everything here is independent of everything in Wave 0 except the contracts, whi
 
 | Track | Work | Tier |
 |---|---|---|
-| A. Release pipeline | CI matrix, `tauri-action` bundles for all three platforms, signing hooks, updater artifacts, `latest.json` on GitHub Releases, a beta channel | M (YAML: S) |
+| A. Release pipeline | A release workflow beside Wave 0.5's `ci.yml`: `tauri-action` bundles for all three platforms, signing hooks, updater artifacts, `latest.json` on GitHub Releases, a beta channel | M (YAML: S) |
 | B. Application shell | Tauri 2 + Svelte 5 + TypeScript: window layout (chapter sidebar, editor pane, preview, status bar, problems panel), open-folder, recent projects, "Check for updates…" | M |
 | C. Preview | Page images from the engine over the `booker://` protocol, visible-page rendering, zoom, scroll — the app's first real use of the Wave 0 core | M |
-| D. Hygiene | Third-party notices (Typst Apache-2.0, bundled font licences), `cargo metadata` smoke check in CI, issue templates, icons, a pre-push hook refusing direct pushes to `main` | S |
+| D. Hygiene | Third-party notices (Typst Apache-2.0, bundled font licences) assembled from the `cargo deny` licence data Wave 0.5 set up, icons, the frontend `pnpm lint` and `pnpm test` jobs added to the existing CI workflow | S |
 
 Exit criteria: installers built by CI for all three platforms; **a previous release updates itself to the new one**; the app opens a project and shows its pages.
 

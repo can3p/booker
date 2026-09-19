@@ -22,6 +22,7 @@ app/
   src-tauri/        Tauri 2 shell, IPC, booker:// protocol
   src/              Svelte 5 + TypeScript UI
 fixtures/           shared test projects
+xtask/              development tasks (golden-test regeneration, later the eval harness)
 docs/               plan, log, findings, open questions, wave briefs
 .github/workflows/  ci.yml, release.yml
 ```

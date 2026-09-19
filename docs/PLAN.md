@@ -433,10 +433,10 @@ Exit criteria: a 24-page picture book can be laid out end to end without touchin
 | F. Discoverability | JSON Schemas generated from the parsing structs, `booker capabilities --json`, `booker explain <topic\|rule>`, `booker recipe list/show`, "did you mean" suggestions on unknown keys | M (recipes: S) |
 | G. Agent onboarding | `AGENTS.md` and a Booker skill generated into new book projects from the capability manifest, `booker explain format` | S |
 | H. MCP conformance | Real-client tests over stdio: handshake, tools matching the capability manifest, schema validity, CLI/MCP parity, refusals, cancellation, deterministic output, on all three platforms | M |
-| I. Eval harness | Fixture projects, scenario runner with programmatic success checks, instrumentation of which discovery commands were used, a single command to run it by hand and a written result for the wave log | L (scenarios: S) |
+| I. Eval harness | `evals/` in this repository (never shipped): fixture projects, a scenario runner with programmatic success checks, instrumentation of which discovery commands the agent used, `cargo xtask eval` and a written result for the wave log | L (scenarios: S) |
 | J. CI | `booker check --format sarif` annotations in the sample GitHub workflow | S |
 
-Exit criteria: while the app is open, an outside process rewriting every file in the project leaves the app correct and responsive; `booker check` finds every fault in the "deliberately broken book" fixture and `booker fix --safe` repairs the mechanical ones; and an agent given only the project folder and the CLI can add a drop cap, move an image to a fixed position and make chapters start on the right — without being told the format beforehand. That last one is the real test, and it is worth running as an eval on each release.
+Exit criteria: while the app is open, an outside process rewriting every file in the project leaves the app correct and responsive; `booker check` finds every fault in the "deliberately broken book" fixture and `booker fix --safe` repairs the mechanical ones; and an agent given only the project folder and the CLI can add a drop cap, move an image to a fixed position and make chapters start on the right — without being told the format beforehand. That last one is the real test, and it is the first scenario in the eval harness.
 
 ### Wave 7: The furniture of a book
 **Demo:** a novel with footnotes, an epigraph, a proper copyright page, ornaments between scenes, and a non-fiction book with margin notes, a bibliography and an index.
@@ -631,7 +631,7 @@ Two kinds of test, because two different things can break. The protocol can brea
 - Output is deterministic — sorted keys, project-relative paths, no timestamps — so an agent diffing two runs sees only real change. This is a requirement on the output format, not only on the tests.
 - Windows gets the same run, because path handling and stdio buffering differ there.
 
-**Agent evals** (run by hand, before a release and at the end of a wave):
+**Agent evals** — a development harness in this repository (`evals/`, run with `cargo xtask eval`), not part of the shipped application. Scenarios and fixtures live with the source; nothing about them reaches a user's machine. Run by hand, at the end of a wave and before a release:
 
 Each scenario is a fixture project, a prompt phrased the way a person would phrase it, and a **programmatic success check** — so the assertion is deterministic even though the agent is not.
 
@@ -646,7 +646,7 @@ Each scenario is a fixture project, a prompt phrased the way a person would phra
 
 What the evals measure beyond pass or fail: how many turns it took, and **which discovery commands the agent used** — `capabilities`, `explain`, `recipe`, or none. An agent that guessed and got a "did you mean" correction tells us a recipe is missing; an agent that read the manifest and still got it wrong tells us the manifest is unclear. That instrumentation is the point of running them.
 
-Policy: conformance tests are cheap and deterministic, so they block merges in CI. **Evals are a deliberate manual step** — `booker eval` (or `just eval`) run by a person at the end of a wave and before a release, never on a schedule, because each run costs model time. Each scenario should pass in at least four runs out of five; the result is written into the wave log, and a drop in pass rate is a reason not to release. Keeping it manual also keeps the scenario set honest: if running it is a chore, the set is too big.
+Policy: MCP conformance is an ordinary integration test suite — cheap, deterministic, part of `cargo test`, and blocking in CI. **Evals are a deliberate manual step**: `cargo xtask eval` run by a person at the end of a wave and before a release, never on a schedule, because each run costs model time and needs an API key that CI should not hold. Each scenario should pass in at least four runs out of five; the result is written into the wave log, and a drop in pass rate is a reason not to release. Keeping it manual also keeps the scenario set honest — if running it is a chore, the set is too big.
 
 ### 11.6 Teach the agent the format
 

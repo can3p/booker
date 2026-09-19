@@ -321,10 +321,27 @@ impl Frame {
                 items: self.items,
                 span,
             })),
-            FrameKind::Item => Built::Item(ListItem {
-                blocks: self.blocks,
-                span,
-            }),
+            FrameKind::Item => {
+                let mut blocks = self.blocks;
+                // A *tight* list item ("- one") has no paragraph of its own:
+                // pulldown-cmark sends its text straight to the item, so the
+                // inlines land here rather than in a Paragraph frame.
+                // Without this they would be dropped, and the item's text
+                // would silently vanish from the document.
+                if !self.inlines.is_empty() {
+                    let first = self.inlines.first().map(Inline::span).unwrap_or(span);
+                    let last = self.inlines.last().map(Inline::span).unwrap_or(span);
+                    blocks.insert(
+                        0,
+                        Block::Paragraph(Paragraph {
+                            inlines: self.inlines,
+                            attributes: Attributes::default(),
+                            span: first.join(last),
+                        }),
+                    );
+                }
+                Built::Item(ListItem { blocks, span })
+            }
             FrameKind::Code { language } => Built::Block(Block::Code(CodeBlock {
                 language,
                 code: self.text,

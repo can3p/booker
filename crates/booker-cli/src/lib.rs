@@ -5,6 +5,7 @@
 //! app can show about a project, this can print (`AGENTS.md` §6), and there
 //! is one implementation of it, not two.
 
+pub mod bridge;
 pub mod engine;
 
 use std::io::Write;
@@ -176,7 +177,13 @@ fn build(root: &Path, out: &mut impl Write) -> anyhow::Result<i32> {
         target: CompileTarget::Pdf,
         revision: project.revision(),
     };
-    match engine::compile(&request, &output) {
+    let chapter_sources: Vec<(&str, &booker_doc::Document)> = project
+        .chapters()
+        .iter()
+        .map(|chapter| (chapter.source(), chapter.document()))
+        .collect();
+
+    match engine::compile(&request, config, &chapter_sources, &output) {
         engine::Outcome::Compiled(result) => {
             writeln!(
                 out,
@@ -186,13 +193,13 @@ fn build(root: &Path, out: &mut impl Write) -> anyhow::Result<i32> {
                 result.duration_ms
             )?;
         }
-        engine::Outcome::EngineNotHereYet { output } => {
+        engine::Outcome::Failed(reason) => {
             writeln!(
                 out,
-                "Would build {} — the layout engine (booker-typst, Wave 0 track C) \
-                 is not in this build yet, so no PDF was written",
+                "Could not build {}: {reason}",
                 project.relative(&output).display()
             )?;
+            return Ok(HAS_ERRORS);
         }
     }
 

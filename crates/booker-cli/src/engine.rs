@@ -1,45 +1,71 @@
 //! The seam toward the layout engine.
 //!
-//! ## This is a seam, not an implementation
+//! `booker build` asks [`compile`] for a PDF. Everything about *how* a book
+//! becomes pages lives behind this one function: the CLI knows the request
+//! and the result (the `booker_core` contracts) and nothing else.
 //!
-//! Producing a PDF needs `booker-typst`, which is Wave 0 track C and is
-//! being built in parallel with this crate. Until it exposes `compile`,
-//! `booker build` does everything except the last step: it loads the
-//! project, parses the Markdown, reports what it found, and says what it
-//! *would* build.
-//!
-//! **To close the seam**, when `booker_typst::compile(&CompileRequest) ->
-//! Result<CompileResult>` exists, this is the only file to change: replace
-//! the body of [`compile`] with the call, and delete
-//! [`Outcome::EngineNotHereYet`]. Nothing else in the CLI knows how a PDF is
-//! made — the request and the result are the Wave 0 contracts
-//! (`booker_core::compile`), which both sides already agree on.
+//! Today it translates the document model to Typst through
+//! [`crate::bridge`] — a minimal translation that exists so Wave 0 ends with
+//! a book a person can look at. When the real codegen lands in
+//! `booker-typst` (Wave 2 track B), this function calls that instead, and
+//! the bridge is deleted. Nothing else in the CLI changes.
 
 use std::path::{Path, PathBuf};
 
-use booker_core::{CompileRequest, CompileResult};
+use booker_core::{BookConfig, CompileRequest, CompileResult};
+use booker_doc::Document;
+use booker_typst::Engine;
+
+use crate::bridge;
 
 /// What a build attempt did.
 pub enum Outcome {
-    /// The engine ran.
+    /// The engine ran and the PDF is on disk.
     Compiled(Box<CompileResult>),
-    /// The engine is not in this build yet. Carries what it would have been
-    /// asked to do, so the CLI can say so precisely.
-    EngineNotHereYet { output: PathBuf },
+    /// The engine could not answer. Carries the reason, already phrased for
+    /// a person: a failed build must say what to do about it.
+    Failed(String),
 }
 
-/// Ask the layout engine to lay the book out and write `output`.
-pub fn compile(request: &CompileRequest, output: &Path) -> Outcome {
-    // SEAM (Wave 0 track C): becomes
-    //
-    //     Outcome::Compiled(Box::new(booker_typst::compile(request, output)?))
-    //
-    // `booker-typst` today re-exports the contracts and nothing else, so
-    // calling it would not compile. Everything up to this line is real.
-    let _ = request;
-    Outcome::EngineNotHereYet {
-        output: output.to_path_buf(),
+/// Lay the book out and write `output`.
+///
+/// The generated Typst is kept in memory under the engine's entry point
+/// rather than written next to the author's files: `.booker/` is a cache
+/// that must be safe to delete, and a project folder should not fill up
+/// with generated source nobody asked for.
+pub fn compile(
+    request: &CompileRequest,
+    config: &BookConfig,
+    chapters: &[(&str, &Document)],
+    output: &Path,
+) -> Outcome {
+    let source = bridge::book_to_typst(config, chapters);
+
+    let mut engine = match Engine::open(request.project.clone()) {
+        Ok(engine) => engine,
+        Err(error) => return Outcome::Failed(error.to_string()),
+    };
+    if let Err(error) = engine.set_source(booker_typst::DEFAULT_ENTRYPOINT, source) {
+        return Outcome::Failed(error.to_string());
     }
+
+    let compilation = match engine.compile(request) {
+        Ok(compilation) => compilation,
+        Err(error) => return Outcome::Failed(error.to_string()),
+    };
+
+    if let Some(pdf) = compilation.pdf {
+        if let Some(parent) = output.parent() {
+            if let Err(error) = std::fs::create_dir_all(parent) {
+                return Outcome::Failed(format!("{}: {error}", parent.display()));
+            }
+        }
+        if let Err(error) = std::fs::write(output, pdf) {
+            return Outcome::Failed(format!("{}: {error}", output.display()));
+        }
+    }
+
+    Outcome::Compiled(Box::new(compilation.result))
 }
 
 /// Where a build writes, given a project root and a title.

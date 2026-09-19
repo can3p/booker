@@ -185,7 +185,7 @@ fn building_the_minimal_fixture_is_clean() {
 }
 
 #[test]
-fn a_build_writes_nothing_into_the_project() {
+fn a_build_touches_nothing_but_the_generated_folder() {
     let directory = tempfile::tempdir().expect("a temporary folder");
     let root = directory.path().join("mia");
     call(Command::New {
@@ -198,10 +198,17 @@ fn a_build_writes_nothing_into_the_project() {
     call(Command::Build {
         project: root.clone(),
     });
-    assert_eq!(
-        listing(&root),
-        before,
-        "building must not change the project folder"
+    // A build writes its PDF into `build/`, which is generated and
+    // git-ignored. Everything the author wrote must be exactly as it was:
+    // opening or building a project never edits it (`AGENTS.md` §7).
+    let after: Vec<String> = listing(&root)
+        .into_iter()
+        .filter(|entry| !entry.starts_with("build"))
+        .collect();
+    assert_eq!(after, before, "building must not change the author's files");
+    assert!(
+        root.join("build").exists(),
+        "the build should have produced its output folder"
     );
 }
 

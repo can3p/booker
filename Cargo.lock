@@ -189,10 +189,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "booker-core",
+ "booker-doc",
  "booker-project",
  "booker-typst",
  "clap",
  "tempfile",
+ "toml",
 ]
 
 [[package]]

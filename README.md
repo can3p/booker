@@ -6,7 +6,7 @@ Book authoring for people who want a good-looking book without learning typesett
 
 A Booker project is a plain folder: Markdown for the text, a few readable TOML files for how it should look. It lives in git, opens in any editor, and builds into a print-ready PDF. The layout engine is [Typst](https://typst.app), embedded in the application, so a 200-page novel lays out in about half a second.
 
-**Status: early.** The core works end to end on the command line — a folder of Markdown becomes a PDF. The desktop application and the installers are the next milestone, so today Booker is built from source and run as a command. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
+**Status: early.** The core works end to end on the command line — a folder of Markdown becomes a PDF. Next come a tutorial for what it can already do, then the desktop application and the installers, so today Booker is built from source and run as a command. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
 
 ## What you need
 

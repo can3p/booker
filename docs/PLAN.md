@@ -354,7 +354,9 @@ Model tiers used below:
 
 **Measured:** 520–570 ms cold compile of a 201-page novel, 24–29 ms after a one-character edit. That is what makes the live preview in Wave 2 possible.
 
-### Wave 0.5: Continuous integration
+### Wave 0.5: Continuous integration ✅ done
+**Shipped:** every pull request now runs fmt, clippy, the test suite on macOS, Linux and Windows, the doc build, the bindings and the dependency policy. See `docs/WAVE-LOG.md`, including the three Windows faults the first three-platform run found.
+
 **Demo:** open a pull request that is unformatted, warns under clippy, fails a test and duplicates a dependency key. CI marks it red four times, each naming what is wrong; fixed, it goes green on macOS, Linux and Windows.
 
 A short wave inserted before Wave 1 because Wave 1 merges four parallel tracks and Wave 0's two-track merge already produced a `Cargo.toml` that merged cleanly and then failed to parse. The check that catches that has to exist before the wave that needs it. It is also where we find out whether the Wave 0 code runs anywhere but one macOS laptop — the suite has never been run on Linux or Windows.

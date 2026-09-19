@@ -122,3 +122,33 @@ Format:
 - What: `crates/booker-typst/src/world.rs` refuses paths that climb out of the project, and its tests used `/books/mia` as the root and `/books/mia/content/01.typ` as the file. On Windows, a path that starts with `/` and names no drive is *drive-relative*, not absolute: `Path::is_absolute` returns false, so the file took the relative branch of `virtual_path`, hit a `RootDir` component and was refused — the test asserted the opposite of what it was testing, and only on one platform. The tests now build the root and the absolute file with a small `absolute()` helper that spells them `C:\books\mia` on Windows.
 - Why it matters: any test that turns on whether a path is absolute — and Booker has several, because refusing paths outside the project is a security boundary — is a platform test in disguise. The production code was right; only the tests were wrong. Write path fixtures with `PathBuf::join` and a platform-aware root, never as Unix string literals, and expect the same trap in Wave 7's "refusals for paths outside the project" conformance tests.
 - Where: `crates/booker-typst/src/world.rs` (`virtual_path` and its tests). Found by `test (windows-latest)`, https://github.com/can3p/booker/actions/runs/35451658819.
+
+### A test can prove a tutorial's commands, never its sentences
+- Learned: 2026-09-20, Wave 0.6 / tracks A and B
+- What: `crates/booker-cli/tests/tutorials.rs` replays every ```console block and passed on the first run, and the tutorial was still wrong. The paragraph after the first real build said "the paragraphs are indented after the first one". They are not — Booker's default separates paragraphs with space and indents nothing. Nothing in the harness could have caught it, because it is a claim about the PDF rather than about anything printed. It was found by rendering the two pages to PNG (`pdftoppm -png -r 110`) and looking at them, which also confirmed what *is* true and was worth writing down instead: justified lines, hyphenation that depends on `language`, and the `inside` margin swapping sides between page 1 and page 2.
+- Why it matters: the harness checks the transcripts; a person has to check the prose, and the cheapest way to do that is to render the output and look. Every wave that touches a tutorial should render what the tutorial tells the reader to build and compare it with what the tutorial says they will see — this is the same instinct as the golden tests (`AGENTS.md` §6), applied to documentation. Expect it to matter much more from Wave 2 on, when styles arrive and there is far more on the page to describe.
+- Where: `docs/tutorials/01-your-first-book.md` §5, `crates/booker-cli/tests/tutorials.rs`.
+
+### The tutorial harness runs the binary, not `booker_cli::run`
+- Learned: 2026-09-20, Wave 0.6 / track B
+- What: `tests/commands.rs` calls `booker_cli::run` in process with a `tempfile` path, which is fast and right for a unit-level check. The tutorial harness cannot: a tutorial quotes `Created a `novel` book in the-moon-jar` — a *relative* path, as the reader's shell shows it — and `echo $?` reporting the process exit code. Running in process would mean rewriting the path arguments, which changes exactly the text being asserted. It spawns `env!("CARGO_BIN_EXE_booker")` with `current_dir` set instead; Cargo builds that binary for the crate's integration tests anyway, so the only cost is a process spawn per command, and the whole suite takes under two seconds.
+- Why it matters: any future check of what Booker *prints* — the Wave 7 MCP conformance suite compares the server's output with the CLI's for the same question — has the same constraint. Compare the real process's bytes, or you are comparing something the user never sees.
+- Where: `crates/booker-cli/tests/tutorials.rs`, contrasted with `crates/booker-cli/tests/commands.rs`.
+
+### Build durations vary by an order of magnitude between runs
+- Learned: 2026-09-20, Wave 0.6 / track A
+- What: the same two-chapter book built in 30 ms and then 2 ms on consecutive runs of the same release binary; the debug binary the test suite uses took 94 ms, then 32 ms, then 32 ms. Nothing about the project changed; it is Typst's caches warming and the font load.
+- Why it matters: it is why the tutorial convention has a `…` wildcard at all, and why the wildcard must stay narrowly scoped — `2 pages in … ms` is legitimate, `… pages in … ms` would hide a real regression. The same caution applies to any future benchmark assertion: a single timing is not a measurement.
+- Where: `docs/tutorials/index.md` (the convention), `crates/booker-cli/tests/tutorials.rs` (`matches`).
+
+### Appending a key to `book.toml` puts it in the last table, not at the top level
+- Learned: 2026-09-20, Wave 0.6 / track A
+- What: writing the tutorial's deliberate typo by appending `authorr = "Mia"` to the end of a generated `book.toml` produced `warning[BK-FORMAT-005] unknown key `page.margins.authorr`` — correct TOML (the key lands inside the last `[table]` header, which is `[page.margins]`) and thoroughly confusing to a beginner who thinks they added a top-level key. The tutorial puts its typo on line 5, next to `author`, and shows the whole file so the reader cannot get it wrong.
+- Why it matters: it is a real trap for both people and agents editing `book.toml` by appending, and the diagnostic is doing nothing wrong — it names the key it actually found. If unknown-key suggestions ever get smarter (`AGENTS.md` §6, "did you mean …"), a key whose leaf name matches a known *top-level* key while sitting in a table is worth a better message than the generic one.
+- Where: `crates/booker-project/` (BK-FORMAT-005), `docs/tutorials/01-your-first-book.md` §7.
+
+### `booker new --template <unknown>` names the path as `.`
+- Learned: 2026-09-20, Wave 0.6 / track A
+- What: `booker new the-moon-jar --template kidsbook` reports `booker: .: unknown template `kidsbook`; this build has: novel`. The message, its suggestion and its exit code are all right; only the location is wrong — the template is not resolved against a path, so the error is built with `.` where every other message names the file it came from.
+- Why it matters: `AGENTS.md` §6 says every user-visible error names the file it came from, and this one names a file that has nothing to do with the mistake. Not fixed in Wave 0.6 because the tutorial does not walk the reader into it and the wave was documentation; it is a small, self-contained fix for whoever next touches `Template::from_name`.
+- Where: `crates/booker-project/src/template.rs`, reached from `crates/booker-cli/src/lib.rs` `new`.

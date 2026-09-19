@@ -18,6 +18,24 @@ Format:
 
 ---
 
+## Wave 0.6 — The first tutorial, and the harness that keeps tutorials true
+- Shipped: 2026-09-20, merged to `main` as PR #7 (no release tag: nothing installable yet, the first tag is Wave 1's `v0.2.0`).
+- Demo: from a clean clone, `cargo install --path crates/booker-cli`, then follow `docs/tutorials/01-your-first-book.md` — `booker new the-moon-jar`, write two chapters, set a 5.5 × 8.5 in page, `booker build .` — and hold a two-page PDF of *The Moon in a Jar*. Then change `Problems: none` to `Problems: nothing` in `crates/booker-cli/src/lib.rs` and `cargo test` fails with `docs/tutorials/01-your-first-book.md:107: the tutorial says this line is printed: Problems: none / but `booker build .` printed: Problems: nothing`.
+- Tracks: A the tutorial · B the harness · C where it is advertised — one session, sequentially, as the brief allowed. The wave was far too small for worktrees to pay for themselves, the same conclusion Wave 0.5 reached.
+- Deviations from the plan:
+  - **The harness spawns the binary instead of calling `booker_cli::run`.** The brief did not say which; `tests/commands.rs` does the latter and is much faster. It cannot work here: a tutorial quotes `Created a `novel` book in the-moon-jar` — a relative path, as a reader's shell prints it — and the exit code their shell reports. Running in process means rewriting the path arguments, which changes exactly the text under test. `env!("CARGO_BIN_EXE_booker")` with `current_dir` set costs a process spawn per command and the whole suite runs in under two seconds.
+  - **The harness is deliberately not a shell.** It understands `booker …`, `cd`, `rm` and `echo $?`, and anything else fails the test telling the author to mark the block ```console ignore. Silently skipping an unrecognised line is precisely how a tutorial starts lying, so the brief's "runs each `$` line" became "runs each `$` line or refuses".
+  - **`echo $?` became the way a tutorial declares a non-zero exit**, rather than a magic comment. It is what a reader would actually type, it teaches the exit codes the README documents, and a `booker` command that fails without the tutorial saying so now fails the test.
+  - **The wildcard is `…` only, and the plan's "durations and paths" narrowed to durations.** Every path Booker prints is project-relative and stable (`display_path`, Wave 0.5), so wildcarding one would hide a regression rather than tolerate noise.
+- Deferred: nothing from this wave. One small bug found and not fixed: `booker new x --template unknown` reports the location as `.` instead of naming anything relevant (`docs/FINDINGS.md`) — a self-contained fix for whoever next touches `Template::from_name`.
+- What the harness could not catch: it passed on its first run while the tutorial still claimed the PDF's "paragraphs are indented after the first one". They are not. It was found by rendering both pages with `pdftoppm` and looking at them, which is now written down as the step a tutorial needs before a wave closes. The corrected paragraph describes what is actually on the page — justified lines, hyphenation that depends on `language`, and the `inside` margin swapping sides between page 1 and page 2.
+- Cost: 11 commands replayed, 1.9 s of test time on top of the existing `test` job, no new CI job and no new minutes.
+- Update check: not applicable — no installers in this wave.
+- Agent surface: not applicable — Wave 7.
+- Findings recorded: five entries in `docs/FINDINGS.md` — that a test proves a tutorial's commands but never its sentences, why the harness spawns the binary, how far build durations vary between runs, the TOML trap where an appended key lands in the last table, and the `--template` location bug.
+
+---
+
 ## Wave 0.5 — Continuous integration
 - Shipped: 2026-09-20, merged to `main` as PR #4 (no release tag: nothing installable yet, the first tag is Wave 1's `v0.2.0`). The planning that preceded it merged as PR #3.
 - Demo: open a pull request that is unformatted, warns under clippy, fails a test or duplicates a dependency key; CI marks it red, one job per fault, each message naming the fault. Fixed, it goes green on macOS, Linux and Windows.

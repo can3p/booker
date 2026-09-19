@@ -72,6 +72,7 @@ Format:
 - Context: `PLAN.md` §5.2 shows `size = "8.5x8.5in"`, but the `PageSize` type is either a named preset or `{ width, height }`. The loader currently accepts all three, which means three ways to write one thing.
 - Options: make the string form canonical and the table form the escape hatch; or the reverse; or keep all three and say so in the schema.
 - Default we are proceeding with: all three accepted, presets preferred in anything Booker generates.
+- Since 2026-09-20 (Wave 0.6) `docs/tutorials/01-your-first-book.md` teaches the preset first and then the string form, `size = "5.5x8.5in"`, so whichever way this is answered, answering it now means editing a tutorial as well as the loader — and the tutorial test will say so.
 - Status: Open
 
 ### Q-09 — Must a book have a title?

@@ -371,7 +371,7 @@ A short wave inserted before Wave 1 because Wave 1 merges four parallel tracks a
 
 Exit criteria: every pull request runs the full check set; the suite passes on three platforms; each check has been seen to fail on purpose; `CONTRIBUTING.md` gives the local command for every check. No installers and no updater — those start with Wave 1.
 
-### Wave 0.6: The first tutorial
+### Wave 0.6: The first tutorial ✅ done
 **Demo:** someone who has never seen Booker follows `docs/tutorials/01-your-first-book.md` and ends up holding a PDF of a book they wrote. Then change one line of the CLI's output on a branch, and CI goes red naming the tutorial and the line that is now a lie.
 
 `docs/requirements.md` asks for tutorials covering everything Booker can do, and for every wave that adds a visible capability to update or add one in the same change. Booker can already do something and nothing teaches it, so the rule starts here rather than leaving a gap under Wave 1. The second half of the wave is the reason it comes after CI: a tutorial rots silently — nothing fails when a printed line changes, a reader just finds out — so the commands in a tutorial are executed by the test suite.
@@ -383,6 +383,8 @@ Exit criteria: every pull request runs the full check set; the suite passes on t
 | C. Where they are advertised | `README.md` points at the tutorial before the flag list; `CONTRIBUTING.md` says how to add one and how to keep it green | S |
 
 Exit criteria: a beginner can follow the tutorial to their own PDF; a deliberate change to the CLI's output turns `cargo test` red naming the tutorial line; everything Booker can do today can be learned from `docs/tutorials/`. Brief: `docs/waves/wave-0.6.md`.
+
+What shipped, and the one thing the brief did not anticipate: the harness understands four commands — `booker …`, `cd`, `rm` and `echo $?` — rather than being a shell, and it spawns the real binary rather than calling `booker_cli::run` in process, because a tutorial quotes relative paths and exit codes that do not survive being faked. `echo $?` doubles as the way a tutorial declares an expected non-zero exit; a command that fails without the tutorial saying so fails the test. The harness passed on its first run while the tutorial still contained a false sentence about the PDF, which is why a tutorial's pages are now rendered and looked at before the wave closes (`docs/FINDINGS.md`).
 
 ### Wave 1: The application and how it reaches people
 **Demo:** download Booker, install it on macOS, Windows or Linux, open a folder, see the book's pages, export a PDF. Then publish the next version and watch the installed one update itself.

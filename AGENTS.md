@@ -24,7 +24,7 @@ This file is the standing instruction for any agent session. Read it first, foll
 
 **Starting a session:** read `docs/WAVE-LOG.md` (what is finished), then `docs/PLAN.md` §8 (the waves), then `git branch -a` (what is in flight), then the brief for the current wave in `docs/waves/`. Say which wave and track you are on before you start changing files.
 
-**Where things stand today:** Waves 0 and 0.5 are complete and merged. The core works end to end — `booker new` then `booker build` writes a PDF — and CI checks fmt, clippy, the test suite on macOS, Linux and Windows, the doc build, the TypeScript bindings and the dependency policy on every pull request. **Wave 0.6 is the next one to start**, and its brief is `docs/waves/wave-0.6.md`: the tutorial for what Booker can already do, and the harness that keeps tutorials from drifting away from the software. Then Wave 1 — the desktop application and the release pipeline, `docs/waves/wave-1.md`. Rust lives in `~/.cargo/bin`, which is not on the default PATH — run `. "$HOME/.cargo/env"` first.
+**Where things stand today:** Waves 0, 0.5 and 0.6 are complete and merged. The core works end to end — `booker new` then `booker build` writes a PDF — CI checks fmt, clippy, the test suite on macOS, Linux and Windows, the doc build, the TypeScript bindings and the dependency policy on every pull request, and `docs/tutorials/01-your-first-book.md` teaches everything Booker can currently do, with every command in it executed by `cargo test`. **Wave 1 is the next one to start**, and its brief is `docs/waves/wave-1.md`: the desktop application and the release pipeline. Rust lives in `~/.cargo/bin`, which is not on the default PATH — run `. "$HOME/.cargo/env"` first.
 
 ## 2. Which document gets the write
 

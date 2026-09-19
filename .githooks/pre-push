@@ -1,0 +1,29 @@
+#!/bin/sh
+# main moves only through a merged pull request (AGENTS.md §3). This hook is
+# advice, not a gate — it lives in the repository so a fresh clone gets it
+# after one command:
+#
+#     git config core.hooksPath .githooks
+#
+# Branch protection on GitHub is the real gate and only the repository owner
+# can turn it on (docs/OPEN-QUESTIONS.md, Q-10).
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+    case "$remote_ref" in
+        refs/heads/main)
+            echo "pre-push: refusing to push straight to main." >&2
+            echo "" >&2
+            echo "  main only moves through a merged pull request (AGENTS.md §3)." >&2
+            echo "  Put the work on a branch instead:" >&2
+            echo "" >&2
+            echo "      git switch -c <branch>" >&2
+            echo "      git push -u origin <branch>" >&2
+            echo "      gh pr create" >&2
+            echo "" >&2
+            echo "  If you genuinely mean it: git push --no-verify" >&2
+            exit 1
+            ;;
+    esac
+done
+
+exit 0

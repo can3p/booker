@@ -1,0 +1,42 @@
+name: Bug report
+description: Something Booker did wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Booker's rule is that every way a book can break has a named,
+        locatable diagnostic. If something broke and Booker did not tell you
+        clearly what and where, that is part of the bug — say so below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: project
+    attributes:
+      label: The project
+      description: >
+        If you can, the smallest `book.toml` and Markdown that shows the
+        problem. A book folder is plain text — pasting it is usually enough.
+      render: toml
+  - type: input
+    id: version
+    attributes:
+      label: Booker version
+      description: From the application's About window, or `booker --version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true

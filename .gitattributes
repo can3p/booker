@@ -1,0 +1,16 @@
+# LF in the working tree on every platform. This is not a style preference:
+# the booker-project round-trip tests assert that a file written back is
+# byte-identical to the one read, and Git's Windows default would hand them
+# CRLF and fail them for a reason that has nothing to do with the code.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.ico binary
+*.icns binary

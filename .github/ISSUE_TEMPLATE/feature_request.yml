@@ -1,0 +1,22 @@
+name: Feature request
+description: Something Booker should be able to do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Booker is for people making a book without wanting to learn a layout
+        program, so the most useful thing you can write is the book you are
+        trying to make, not the setting you think you need.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to make
+      description: The page, the book, the effect — described as you would to a person.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today
+      description: How you work around it now, if you can at all.

@@ -1,0 +1,18 @@
+[package]
+name = "booker-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "booker"
+path = "src/main.rs"
+
+[dependencies]
+booker-core = { workspace = true }
+booker-project = { workspace = true }
+booker-typst = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }

@@ -1,0 +1,7 @@
+/target
+/build
+.booker/
+node_modules/
+app/src/lib/bindings/
+*.pdf
+.DS_Store

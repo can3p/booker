@@ -33,3 +33,15 @@ Format:
 - What: 0.15.0 aligned `box` and `block` between HTML and paged export — a breaking change — and added bundle export (one project, several output files) plus MathML for equations.
 - Why it matters: when we pin or upgrade the Typst version, HTML-adjacent output can shift even if the PDF does not. The golden suite must cover both.
 - Where: Typst 0.15 release notes; `docs/PLAN.md` §3.
+
+### `deny_unknown_fields` and `flatten` cannot both be used, and preserving wins
+- Learned: 2026-09-19, Wave 0 contracts
+- What: serde rejects a struct that both denies unknown fields and captures them with `#[serde(flatten)]` into a map — the flattened map receives everything, so the deny rule fires first and parsing fails. The contract test caught it immediately.
+- Why it matters: our rule is that an older Booker preserves keys a newer one wrote (`AGENTS.md` §7), so no project-file struct may use `deny_unknown_fields`. A misspelled key is therefore not a parse error; it is caught by a `format.*` diagnostic that suggests the right key, which serves the user better anyway.
+- Where: `crates/booker-core/src/project.rs`, `BookConfig` and `PageConfig`.
+
+### Toolchain on the development machine
+- Learned: 2026-09-19, Wave 0
+- What: rustup installed to `~/.cargo`, stable 1.98.1 (aarch64-apple-darwin). `~/.cargo/bin` is **not** on the PATH, because the installer was run with `--no-modify-path`; a shell needs `. "$HOME/.cargo/env"` or an explicit `PATH` export.
+- Why it matters: a session that runs `cargo` without that will be told the command does not exist, and may wrongly conclude Rust is missing.
+- Where: `CONTRIBUTING.md`.

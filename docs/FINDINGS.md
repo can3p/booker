@@ -158,3 +158,9 @@ Format:
 - What: `booker new the-moon-jar --template kidsbook` reports `booker: .: unknown template `kidsbook`; this build has: novel`. The message, its suggestion and its exit code are all right; only the location is wrong — the template is not resolved against a path, so the error is built with `.` where every other message names the file it came from.
 - Why it matters: `AGENTS.md` §6 says every user-visible error names the file it came from, and this one names a file that has nothing to do with the mistake. Not fixed in Wave 0.6 because the tutorial does not walk the reader into it and the wave was documentation; it is a small, self-contained fix for whoever next touches `Template::from_name`.
 - Where: `crates/booker-project/src/template.rs`, reached from `crates/booker-cli/src/lib.rs` `new`.
+
+### `main`'s protection is a ruleset, and the old API says "not protected"
+- Learned: 2026-09-20, Wave 1 ramp-up
+- What: `main` is protected by a repository **ruleset** named "protect main" — no deletion, no force-push, pull request required with zero approvals. `gh api repos/can3p/booker/branches/main/protection` answers `Branch not protected` (HTTP 404) anyway, because that endpoint only knows the older branch-protection settings. The query that shows the truth is `gh api repos/can3p/booker/rules/branches/main`, or `gh api repos/can3p/booker/rulesets` for the list.
+- Why it matters: a session checking whether `AGENTS.md` §3 is enforced will reach for the `protection` endpoint, get a 404, and conclude that nothing guards `main`. It also means a merge from an agent session needs a pull request to exist — a direct push is refused by the server, not just by `.githooks/pre-push`.
+- Where: `gh api repos/can3p/booker/rules/branches/main`. The ruleset carries no required status checks yet (Q-11).

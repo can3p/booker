@@ -28,7 +28,8 @@ mod write;
 use std::path::{Path, PathBuf};
 
 pub use booker_core::{
-    display_path, BookConfig, Diagnostic, Error, ProjectRef, Result, Revision, Severity,
+    display_path, BookConfig, ChapterSummary, Diagnostic, Error, ProjectInfo, ProjectRef, Result,
+    Revision, Severity,
 };
 
 pub use config::{ConfigFile, BOOK_TOML};
@@ -142,6 +143,40 @@ impl Project {
     /// same output (`PLAN.md` §11.5).
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
+    }
+
+    /// One chapter's headline numbers, in the shape that crosses to the UI.
+    ///
+    /// The window's sidebar and `booker build`'s chapter list are the same
+    /// question asked twice, so they are answered once, here (`AGENTS.md`
+    /// §6).
+    pub fn chapter_summaries(&self) -> Vec<ChapterSummary> {
+        self.chapters
+            .iter()
+            .map(|chapter| ChapterSummary {
+                path: display_path(chapter.relative_path()),
+                title: chapter.title(),
+                words: chapter.word_count(),
+                headings: chapter.document().headings().len(),
+                images: chapter.document().images().len(),
+            })
+            .collect()
+    }
+
+    /// Everything the application needs to describe a project it has just
+    /// opened, before anything has been laid out.
+    ///
+    /// A project with faults in it still produces one of these, with the
+    /// faults in `diagnostics`: refusing to open is never right
+    /// (`AGENTS.md` §7).
+    pub fn info(&self) -> ProjectInfo {
+        ProjectInfo {
+            project: self.reference().clone(),
+            config: self.config().clone(),
+            chapters: self.chapter_summaries(),
+            diagnostics: self.diagnostics().to_vec(),
+            revision: self.revision(),
+        }
     }
 
     pub fn has_errors(&self) -> bool {

@@ -11,6 +11,7 @@ publish = false
 
 [dependencies]
 booker-core = { workspace = true }
+booker-doc = { workspace = true }
 comemo = { workspace = true }
 typst = { workspace = true }
 typst-kit = { workspace = true }
@@ -21,3 +22,5 @@ typst-svg = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+# `book`'s tests build a BookConfig from the TOML a user would write.
+toml = { workspace = true }

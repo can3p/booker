@@ -4,9 +4,10 @@ use std::path::Path;
 use std::time::Instant;
 
 use booker_core::{
-    CompileRequest, CompileResult, CompileTarget, Error, Length, PageInfo, ProjectRef,
+    BookConfig, CompileRequest, CompileResult, CompileTarget, Error, Length, PageInfo, ProjectRef,
     RenderFormat, RenderRequest, Result, Severity,
 };
+use booker_doc::Document;
 use typst::diag::{SourceResult, Warned};
 use typst::model::Numbering;
 use typst::utils::Scalar;
@@ -15,6 +16,7 @@ use typst_pdf::PdfOptions;
 use typst_render::RenderOptions;
 use typst_svg::SvgOptions;
 
+use crate::book;
 use crate::diagnostics;
 use crate::fonts::Fonts;
 use crate::world::{BookerWorld, DEFAULT_ENTRYPOINT};
@@ -109,6 +111,27 @@ impl Engine {
     /// what is on disk. This is how an unsaved buffer reaches the preview.
     pub fn set_source(&mut self, path: impl AsRef<Path>, text: impl Into<String>) -> Result<()> {
         self.world.set_override(path, text)
+    }
+
+    /// Hands the engine a whole book: the project's configuration and its
+    /// chapters, translated to Typst and installed as the entry point.
+    ///
+    /// This is the one way a Booker project becomes pages, and both the
+    /// application and the CLI call it — a second translation would drift
+    /// from this one (`AGENTS.md` §6).
+    ///
+    /// Call it again after every edit and let the engine do the rest: the
+    /// generated source goes through the same memoized compiler, so a
+    /// one-character change to one chapter re-lays out only what actually
+    /// moved. That is why this sets a source rather than returning one, and
+    /// why an application keeps a single engine per open project.
+    ///
+    /// The generated Typst is kept in memory rather than written beside the
+    /// author's files: `.booker/` is a cache that must be safe to delete,
+    /// and a project folder should not fill up with generated source nobody
+    /// asked for.
+    pub fn set_book(&mut self, config: &BookConfig, chapters: &[(&str, &Document)]) -> Result<()> {
+        self.set_source(DEFAULT_ENTRYPOINT, book::book_to_typst(config, chapters))
     }
 
     /// Drops an unsaved buffer; the file on disk speaks for itself again.

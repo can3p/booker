@@ -5,7 +5,6 @@
 //! app can show about a project, this can print (`AGENTS.md` §6), and there
 //! is one implementation of it, not two.
 
-pub mod bridge;
 pub mod engine;
 
 use std::io::Write;
@@ -130,21 +129,24 @@ fn build(root: &Path, out: &mut impl Write) -> anyhow::Result<i32> {
         config.page.margins.outside
     )?;
 
+    // The same summaries the application's sidebar is built from, so the
+    // window and the terminal cannot describe a book differently
+    // (`AGENTS.md` §6).
+    let summaries = project.chapter_summaries();
     let mut words = 0;
     let mut images = 0;
-    writeln!(out, "Chapters: {}", project.chapters().len())?;
-    for chapter in project.chapters() {
-        let document = chapter.document();
-        words += chapter.word_count();
-        images += document.images().len();
+    writeln!(out, "Chapters: {}", summaries.len())?;
+    for chapter in &summaries {
+        words += chapter.words;
+        images += chapter.images;
         writeln!(
             out,
             "  {:<32} {}, {}, {}{}",
-            display_path(chapter.relative_path()),
-            plural(chapter.word_count(), "word"),
-            plural(document.headings().len(), "heading"),
-            plural(document.images().len(), "image"),
-            match chapter.title() {
+            chapter.path,
+            plural(chapter.words, "word"),
+            plural(chapter.headings, "heading"),
+            plural(chapter.images, "image"),
+            match &chapter.title {
                 Some(title) => format!("   “{title}”"),
                 None => String::new(),
             }

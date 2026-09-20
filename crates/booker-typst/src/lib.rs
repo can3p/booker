@@ -2,8 +2,9 @@
 //!
 //! Owned by Wave 0 track C. Typst types stay inside this crate (`AGENTS.md`
 //! §6) so that a Typst upgrade is a change to one crate, gated by the golden
-//! tests. Nothing here takes Markdown: this crate compiles Typst source.
-//! Turning Booker's document model into that source is Wave 1.
+//! tests. Turning Booker's document model into Typst source is [`book`],
+//! which Wave 1 moved here from the CLI so that the window and the terminal
+//! lay a book out the same way, through one translation rather than two.
 //!
 //! # The shape of it
 //!
@@ -44,6 +45,7 @@
 mod engine;
 mod world;
 
+pub mod book;
 pub mod diagnostics;
 pub mod fonts;
 

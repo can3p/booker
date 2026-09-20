@@ -1,0 +1,4 @@
+# The Node the application is built with. Vite 8 refuses anything below
+# 20.19, and CI pins the same version, so a build that works here works
+# there. Rust is pinned separately, by rust-toolchain.toml.
+nodejs 20.19.0

@@ -1,0 +1,22 @@
+# Written by pnpm, not by hand.
+#
+# pnpm 12 refuses packages published in the last few days by default, which
+# is a supply-chain guard worth keeping. `@tauri-apps/cli` 2.11.5 was newer
+# than that when the application was scaffolded, so pnpm recorded the
+# exemption here rather than lowering the rule for everything. Entries age
+# out of relevance on their own; they can be removed whenever the version
+# above is no longer the newest.
+
+minimumReleaseAgeExclude:
+  - '@tauri-apps/cli-darwin-arm64@2.11.5'
+  - '@tauri-apps/cli-darwin-x64@2.11.5'
+  - '@tauri-apps/cli-linux-arm-gnueabihf@2.11.5'
+  - '@tauri-apps/cli-linux-arm64-gnu@2.11.5'
+  - '@tauri-apps/cli-linux-arm64-musl@2.11.5'
+  - '@tauri-apps/cli-linux-riscv64-gnu@2.11.5'
+  - '@tauri-apps/cli-linux-x64-gnu@2.11.5'
+  - '@tauri-apps/cli-linux-x64-musl@2.11.5'
+  - '@tauri-apps/cli-win32-arm64-msvc@2.11.5'
+  - '@tauri-apps/cli-win32-ia32-msvc@2.11.5'
+  - '@tauri-apps/cli-win32-x64-msvc@2.11.5'
+  - '@tauri-apps/cli@2.11.5'

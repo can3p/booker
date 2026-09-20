@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the Booker window is allowed to do. Kept as small as it can be: a capability granted here is one an outside page could use if anything ever loaded one.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "dialog:allow-open",
+    "updater:default"
+  ]
+}

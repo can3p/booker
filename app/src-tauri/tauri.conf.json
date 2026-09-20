@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Booker",
+  "identifier": "com.github.can3p.booker",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Booker",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 720,
+        "minHeight": 480,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' booker: asset: data:; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Productivity",
+    "shortDescription": "Write and lay out a book that lives in a folder",
+    "longDescription": "Booker turns a folder of Markdown into a laid-out book. Projects are plain folders that live in git, so they can be edited with any tool.",
+    "copyright": "MIT licensed. See THIRD-PARTY.md for the notices of what is bundled.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZGNDEzOTg3RDNEMTUzMEIKUldRTFU5SFRoemxCYitIWmpRV1hFODA5cGxXSERrT3ZVTzhaWlcxZXlxS1loNnd1WURiSFJTajUK",
+      "endpoints": [
+        "https://github.com/can3p/booker/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

@@ -6,6 +6,7 @@ members = [
     "crates/booker-doc",
     "crates/booker-typst",
     "crates/booker-cli",
+    "app/src-tauri",
     "xtask",
 ]
 
@@ -32,6 +33,17 @@ thiserror = "1"
 toml = "0.8"
 toml_edit = "0.22"
 ts-rs = "9"
+
+# Wave 1 track B (app/src-tauri). Tauri's plugins are versioned with it and
+# expect to match the npm packages in `app/package.json`; bump the two sides
+# together.
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
+# Wave 1: watching a project folder for changes made from outside.
+notify = "8"
+notify-debouncer-full = "0.7"
 
 # Wave 0 track C (booker-typst). The Typst version is pinned exactly: Typst is
 # pre-1.0, its layout changes between releases, and the golden suite is what

@@ -1,0 +1,73 @@
+/*
+ * The window's own styling. This is the application's chrome, not the
+ * book's: nothing here affects how a page is laid out, which is the
+ * engine's business.
+ *
+ * It follows the system's light or dark setting, because a writing tool
+ * that ignores that is the one bright window on a dark desk.
+ */
+
+:root {
+  --background: #fdfdfb;
+  --foreground: #1b1a17;
+  --muted: #6d6a62;
+  --border: #e2ded4;
+  --accent: #3b5b8c;
+  --error: #a33223;
+
+  color-scheme: light dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1b1a17;
+    --foreground: #f1efe9;
+    --muted: #a09b90;
+    --border: #35332d;
+    --accent: #9ab6e0;
+    --error: #e08175;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0.8rem 0 0.4rem;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

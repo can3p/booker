@@ -22,9 +22,41 @@ This file is the standing instruction for any agent session. Read it first, foll
 | `README.md` | How to get Booker running and what it can do **today** | Anyone who changes what a user can do |
 | `CONTRIBUTING.md` | How to set up and work on the repository | Anyone who changes the setup or the commands |
 
-**Starting a session:** read `docs/WAVE-LOG.md` (what is finished), then `docs/PLAN.md` §8 (the waves), then `git branch -a` (what is in flight), then the brief for the current wave in `docs/waves/`. Say which wave and track you are on before you start changing files.
+**Starting a session — ten minutes, in this order.** The point of the order is that you see the software work before you read a line of its source.
 
-**Where things stand today:** Waves 0, 0.5 and 0.6 are complete and merged. The core works end to end — `booker new` then `booker build` writes a PDF — CI checks fmt, clippy, the test suite on macOS, Linux and Windows, the doc build, the TypeScript bindings and the dependency policy on every pull request, and `docs/tutorials/01-your-first-book.md` teaches everything Booker can currently do, with every command in it executed by `cargo test`. **Wave 1 is the next one to start**, and its brief is `docs/waves/wave-1.md`: the desktop application and the release pipeline. Rust lives in `~/.cargo/bin`, which is not on the default PATH — run `. "$HOME/.cargo/env"` first.
+1. **Put Rust on the PATH.** It lives in `~/.cargo/bin`, which is not there by default, and nothing below works without it: `. "$HOME/.cargo/env"`.
+2. **Read "Where things stand today"**, just below — then the newest entry in `docs/WAVE-LOG.md` (what the last wave shipped and how it deviated), then the brief for the wave you are about to work on in `docs/waves/`. `docs/PLAN.md` §8 is what is still to come; it deliberately says nothing about what already happened (§2).
+3. **Run it.** Three minutes, and you know what Booker actually does:
+
+   ```bash
+   cargo build --release -p booker-cli     # a few minutes cold, seconds warm
+   BOOKER="$PWD/target/release/booker"
+   cd "$(mktemp -d)" && "$BOOKER" new demo --title "Demo" && "$BOOKER" build demo
+   ```
+
+4. **To find out what a command prints, read `docs/tutorials/01-your-first-book.md`, not `crates/booker-cli/src/lib.rs`.** Every command block in it is a verbatim transcript of a real run, and `cargo test` fails if one drifts — so it is both the shortest and the most reliable description of what the software does today, including what its diagnostics look like.
+5. **`git branch -a` and `gh pr list`** — what is in flight. `gh` is installed and authenticated.
+6. Say which wave and track you are on before you start changing files.
+
+Scratch books, experiments and rendered pages go in a temporary folder **outside** the repository, never inside it and never committed.
+
+**The repository in one screen:**
+
+| Path | What it is |
+|---|---|
+| `crates/booker-core` | The contracts every other crate and the app agree on: geometry, project config, diagnostics, compile and render requests. Reaches for nothing — no filesystem, no Typst, no UI. The TypeScript types in `app/src/lib/bindings/` are generated from here with `ts-rs` and are not committed. |
+| `crates/booker-doc` | Markdown to the document model. Every node carries the byte range it came from, because click-to-source and every diagnostic depend on it. |
+| `crates/booker-project` | Loading, watching and writing a project folder: `book.toml` round-tripping with comments and unknown keys preserved, chapters, templates, the diagnostics about all of it. The rules in §7 are this crate's job. |
+| `crates/booker-typst` | The layout engine: Typst embedded in process. Typst types never leave this crate (§6), so a Typst upgrade is a change to one crate. |
+| `crates/booker-cli` | The `booker` binary. The commands live in `src/lib.rs` rather than `main.rs` so tests can run them and capture their output. |
+| `app/` | The Tauri 2 + Svelte 5 application. Nothing but generated bindings until Wave 1. |
+| `xtask/` | Development tasks — golden-snapshot regeneration, and from Wave 7 the agent eval harness. Never shipped to anyone. |
+| `fixtures/` | Projects the tests load. `broken/` is the one with faults in it on purpose. |
+| `.github/workflows/ci.yml` | Every check, one job per concern. `CONTRIBUTING.md` gives the local command for each, and how to run the tutorial replay. |
+
+Tests sit next to the code as `#[cfg(test)]` modules and per-crate in `crates/*/tests/`. Two in `booker-cli` are worth knowing about before you write a third: `tests/commands.rs` calls the commands in process, and `tests/tutorials.rs` replays the tutorials against the real binary.
+
+**Where things stand today:** Waves 0, 0.5 and 0.6 are complete and merged. The core works end to end — `booker new` then `booker build` writes a PDF — CI checks fmt, clippy, the test suite on macOS, Linux and Windows, the doc build, the TypeScript bindings and the dependency policy on every pull request, and `docs/tutorials/01-your-first-book.md` teaches everything Booker can currently do, with every command in it executed by `cargo test`. **Wave 1 is the next one to start**, and its brief is `docs/waves/wave-1.md`: the desktop application and the release pipeline.
 
 ## 2. Which document gets the write
 
@@ -35,6 +67,7 @@ Put every kind of output in exactly one place:
 - **Something needs the owner to decide** → append to `docs/OPEN-QUESTIONS.md` and keep going with a stated default. Do not block a wave on an unanswered question unless the question makes the work meaningless.
 - **A wave finishes** → add its entry to `docs/WAVE-LOG.md` (what shipped, what deviated from the plan, the release tag and PR, what was deferred).
 - **A hard-won fact** (a Typst behaviour, a Tauri quirk, a toolchain trap, a benchmark, a dead end and why) → append to `docs/FINDINGS.md`. The test: would a future session waste an hour without this?
+- **You had to research something to get oriented** — which crate owns a thing, what a command actually prints, how to run the software at all → put the answer in §1 above, in the same change. Ramp-up is paid once per session and forever; anything a session had to work out for itself, the next one should be able to read. This is not the same as `docs/FINDINGS.md`, which is for hard-won facts about how a dependency or a platform behaves; §1 is for the shape of this repository and how to see it running.
 - **A process rule changes** → edit this file, in the same change that introduces the rule.
 - **A user-visible capability arrives or changes** → the tutorials must teach it, in the same change (`docs/requirements.md`). Extend the tutorial that covers the surrounding task when there is one, and add a new `docs/tutorials/NN-<name>.md` when the capability is a task of its own. Write it for someone making their first book: a real thing to make, every command or click, and what the screen actually says back. A feature nobody can be walked through is not finished, and a tutorial describing something the software no longer does is worse than none — if a change makes a tutorial wrong, fixing it is part of the change.
 - **Anything a user can see or type changes** → update `README.md` in the same change. A new or renamed command, a changed flag or default, a new requirement to install, a different output path, a changed project layout, a capability that starts or stops working: the README must describe what the software does *today*, never what it will do. If a change makes a sentence in the README wrong, fixing that sentence is part of the change, not a follow-up.

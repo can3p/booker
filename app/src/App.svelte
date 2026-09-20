@@ -1,158 +1,181 @@
 <script lang="ts">
   /**
-   * The window, as far as Wave 1's contracts step takes it: open a folder,
-   * and show what the core says is in it.
+   * The window: chapter sidebar, editor, preview, problems panel, status
+   * bar — the layout `docs/waves/wave-1.md` asks track B for.
    *
-   * Track B replaces this with the real layout — chapter sidebar, editor
-   * pane, preview, status bar, problems panel. What it must keep is the
-   * shape below: the UI asks `lib/ipc`, renders what comes back, and holds
-   * no opinion of its own about what a book is.
+   * It does no work of its own. Every action goes through the store, and
+   * the store goes through `lib/ipc`, so the menu and the buttons run one
+   * code path and the UI holds no opinion about what a book is.
    */
-  import { open } from "@tauri-apps/plugin-dialog";
+  import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+  import { check } from "@tauri-apps/plugin-updater";
 
-  import { closeProject, openProject, projectInfo } from "./lib/ipc";
-  import type { ProjectInfo } from "./lib/bindings/ProjectInfo";
+  import { Book } from "./lib/book.svelte";
+  import * as ipc from "./lib/ipc";
+  import Editor from "./lib/panes/Editor.svelte";
+  import Preview from "./lib/panes/Preview.svelte";
+  import Problems from "./lib/panes/Problems.svelte";
+  import Sidebar from "./lib/panes/Sidebar.svelte";
+  import StatusBar from "./lib/panes/StatusBar.svelte";
 
-  let info = $state<ProjectInfo | null>(null);
-  let failure = $state<string | null>(null);
-  let busy = $state(false);
+  const book = new Book();
 
-  // A window that was open on a project should say so again after a reload.
-  projectInfo()
-    .then((current) => (info = current))
-    .catch((error: unknown) => (failure = String(error)));
+  let problemsOpen = $state(false);
+  let updateNote = $state<string | null>(null);
+
+  void book.restore();
+
+  // The menu does no work itself: it says what was chosen and this runs it.
+  void ipc.onMenu((id) => {
+    if (id === "open") void chooseFolder();
+    else if (id === "close") void book.close();
+    else if (id === "export-pdf") void chooseDestination();
+    else if (id === "check-for-updates") void checkForUpdates();
+  });
+
+  // Track C starts emitting this when the watcher lands. Listening now
+  // means the window is already written to expect an outside edit.
+  void ipc.onProjectChanged(() => void book.reloadFromDisk());
 
   async function chooseFolder() {
-    const chosen = await open({ directory: true, title: "Open a book" });
-    if (typeof chosen !== "string") return;
-
-    busy = true;
-    failure = null;
-    try {
-      info = await openProject(chosen);
-    } catch (error: unknown) {
-      // The folder could not be read at all. A book with *faults* in it
-      // opens normally and reports them in `diagnostics` below.
-      failure = String(error);
-      info = null;
-    } finally {
-      busy = false;
-    }
+    const chosen = await openDialog({ directory: true, title: "Open a book" });
+    if (typeof chosen === "string") await book.open(chosen);
   }
 
-  async function close() {
-    await closeProject();
-    info = null;
-    failure = null;
+  async function chooseDestination() {
+    if (!book.info) return;
+    const suggested = `${book.info.config.title || "book"}.pdf`;
+    const chosen = await saveDialog({
+      title: "Export PDF",
+      defaultPath: suggested,
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+    });
+    if (typeof chosen === "string") await book.exportPdf(chosen);
+  }
+
+  async function checkForUpdates() {
+    updateNote = "Checking…";
+    try {
+      const update = await check();
+      updateNote = update
+        ? `Version ${update.version} is available.`
+        : "Booker is up to date.";
+    } catch (error: unknown) {
+      // No release endpoint yet, no network, an unsigned build: none of
+      // these are worth an error dialog.
+      updateNote = `Could not check for updates: ${String(error)}`;
+    }
   }
 </script>
 
-<main>
+<div class="window">
   <header>
     <h1>Booker</h1>
     <div class="actions">
-      <button onclick={chooseFolder} disabled={busy}>Open a book…</button>
-      {#if info}
-        <button onclick={close}>Close</button>
+      <button onclick={chooseFolder} disabled={book.busy}>Open a book…</button>
+      {#if book.info}
+        <button onclick={chooseDestination} disabled={book.busy}>Export PDF…</button>
+        <button onclick={() => book.close()}>Close</button>
       {/if}
     </div>
   </header>
 
-  {#if failure}
-    <p class="failure">{failure}</p>
+  {#if book.failure}
+    <p class="failure">
+      {book.failure}
+      <button class="dismiss" onclick={() => (book.failure = null)}>Dismiss</button>
+    </p>
   {/if}
 
-  {#if info}
-    <section>
-      <h2>{info.config.title || "(untitled)"}</h2>
-      <p class="meta">
-        format {info.config.format} · language {info.config.language} · revision
-        {info.revision}
+  {#if updateNote}
+    <p class="note">
+      {updateNote}
+      <button class="dismiss" onclick={() => (updateNote = null)}>Dismiss</button>
+    </p>
+  {/if}
+
+  {#if book.info}
+    <div class="panes">
+      <Sidebar {book} onopen={(root) => book.open(root)} />
+      <Editor {book} />
+      <Preview {book} />
+    </div>
+    <Problems {book} open={problemsOpen} ontoggle={() => (problemsOpen = !problemsOpen)} />
+  {:else}
+    <div class="panes empty-panes">
+      <Sidebar {book} onopen={(root) => book.open(root)} />
+      <p class="empty">
+        No book open. Choose a folder that contains one — a
+        <code>book.toml</code> and a <code>content/</code> folder.
       </p>
-
-      <h3>Chapters: {info.chapters.length}</h3>
-      <ul class="chapters">
-        {#each info.chapters as chapter (chapter.path)}
-          <li>
-            <code>{chapter.path}</code>
-            <span class="counts">
-              {chapter.words} words, {chapter.headings} headings, {chapter.images}
-              images
-            </span>
-            {#if chapter.title}<span class="title">“{chapter.title}”</span>{/if}
-          </li>
-        {/each}
-      </ul>
-
-      <h3>
-        Problems: {info.diagnostics.length === 0 ? "none" : info.diagnostics.length}
-      </h3>
-      {#if info.diagnostics.length > 0}
-        <ul class="problems">
-          {#each info.diagnostics as problem (problem.rule + problem.message)}
-            <li>
-              <strong>{problem.severity}</strong>
-              <code>{problem.rule}</code>
-              {problem.message}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
-  {:else if !failure}
-    <p class="empty">No book open. Choose a folder that contains one.</p>
+    </div>
   {/if}
-</main>
+
+  <StatusBar {book} />
+</div>
 
 <style>
-  main {
-    padding: 1.5rem;
-    max-width: 60rem;
-    margin: 0 auto;
+  .window {
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    height: 100vh;
   }
 
   header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding: 0.4rem 0.75rem;
   }
 
   h1 {
-    font-size: 1.1rem;
-    letter-spacing: 0.04em;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
   }
 
   .actions {
     display: flex;
-    gap: 0.5rem;
-  }
-
-  .meta {
-    color: var(--muted);
-  }
-
-  .chapters,
-  .problems {
-    list-style: none;
-    padding: 0;
-    display: grid;
     gap: 0.4rem;
   }
 
-  .counts,
-  .title {
-    color: var(--muted);
-    margin-left: 0.5rem;
+  .panes {
+    display: grid;
+    grid-template-columns: 15rem 1fr 18rem;
+    min-height: 0;
   }
 
-  .failure {
-    border-left: 3px solid var(--error);
-    padding-left: 0.75rem;
+  .empty-panes {
+    grid-template-columns: 15rem 1fr;
   }
 
   .empty {
     color: var(--muted);
+    padding: 2rem;
+    max-width: 28rem;
+  }
+
+  .failure,
+  .note {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.4rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .failure {
+    border-left: 3px solid var(--error);
+  }
+
+  .dismiss {
+    margin-left: auto;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.85em;
   }
 </style>

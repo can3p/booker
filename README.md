@@ -6,7 +6,7 @@ Book authoring for people who want a good-looking book without learning typesett
 
 A Booker project is a plain folder: Markdown for the text, a few readable TOML files for how it should look. It lives in git, opens in any editor, and builds into a print-ready PDF. The layout engine is [Typst](https://typst.app), embedded in the application, so a 200-page novel lays out in about half a second.
 
-**Status: early.** The core works end to end on the command line — a folder of Markdown becomes a PDF. Next come the desktop application and the installers, so today Booker is built from source and run as a command. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
+**Status: early.** The core works end to end on the command line — a folder of Markdown becomes a PDF — and the desktop application opens a book, edits it and exports a PDF, but is built from source rather than installed: the installers and the updater are the rest of the wave in progress. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
 
 ## Start here
 
@@ -69,6 +69,24 @@ booker build ~/books/my-book
 | `booker build <path>` | Load the project, report any problems, and write `build/<title>.pdf`. |
 
 `booker build` exits `0` when the book is clean, `1` when the project has errors, and `2` when the command itself could not run.
+
+### The application
+
+There is no installer yet, so the window is run from a source checkout. You need
+[Node 20.19 or newer and pnpm](CONTRIBUTING.md#toolchain) as well as Rust, and on Linux the
+desktop libraries listed there.
+
+```bash
+cargo test -p booker-core export_bindings   # the TypeScript types, generated not committed
+cd app
+pnpm install
+pnpm tauri dev
+```
+
+The window opens a book folder, lists its chapters, edits them, shows what is wrong with the
+book, and exports a PDF — through the same core `booker build` uses, so the two cannot
+disagree about a book. The editor is a plain text pane and the preview lists pages rather
+than drawing them; live Markdown styling arrives in Wave 2, page images later in this wave.
 
 ## What a book looks like on disk
 

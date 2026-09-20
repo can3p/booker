@@ -15,9 +15,10 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use booker_core::ProjectInfo;
-use tauri::State;
+use booker_core::{ChapterText, CompileResult, CompileTarget, ExportRequest, ProjectInfo};
+use tauri::{AppHandle, Manager, State};
 
+use crate::recent;
 use crate::session::Session;
 
 /// What a command hands back when it cannot answer: a sentence, not a type
@@ -27,11 +28,20 @@ pub type CommandResult<T> = std::result::Result<T, String>;
 /// Open a project folder. Returns what is in it, faults included.
 #[tauri::command]
 pub fn open_project(
+    app: AppHandle,
     session: State<'_, Mutex<Session>>,
     root: PathBuf,
 ) -> CommandResult<ProjectInfo> {
-    let mut session = session.lock().map_err(poisoned)?;
-    session.open(root).map_err(|error| error.to_string())
+    let info = {
+        let mut session = session.lock().map_err(poisoned)?;
+        session.open(&root).map_err(|error| error.to_string())?
+    };
+    // Remember it under the path the project itself reports, which is
+    // canonical — two different spellings of one folder are one entry.
+    if let Ok(dir) = app.path().app_config_dir() {
+        recent::remember(&dir, &info.project.root);
+    }
+    Ok(info)
 }
 
 /// Describe the project that is already open.
@@ -52,6 +62,72 @@ pub fn close_project(session: State<'_, Mutex<Session>>) -> CommandResult<()> {
     Ok(())
 }
 
+/// The folders this window has opened before, newest first.
+#[tauri::command]
+pub fn recent_projects(app: AppHandle) -> CommandResult<Vec<PathBuf>> {
+    let Ok(dir) = app.path().app_config_dir() else {
+        // No configuration folder means nothing was ever remembered, which
+        // is an empty list rather than a failure.
+        return Ok(Vec::new());
+    };
+    Ok(recent::read(&dir))
+}
+
+/// Lay the book out, without writing anything.
+///
+/// A book with errors comes back with no pages and the errors in
+/// `diagnostics`; that is a successful answer, not a failure.
+#[tauri::command]
+pub fn compile(session: State<'_, Mutex<Session>>) -> CommandResult<CompileResult> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let open = session.current_mut().ok_or_else(nothing_open)?;
+    open.compile(CompileTarget::Layout)
+        .map(|compilation| compilation.result)
+        .map_err(|error| error.to_string())
+}
+
+/// Lay the book out and write a PDF where the user chose.
+#[tauri::command]
+pub fn export_pdf(
+    session: State<'_, Mutex<Session>>,
+    request: ExportRequest,
+) -> CommandResult<CompileResult> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let open = session.current_mut().ok_or_else(nothing_open)?;
+    open.export_pdf(&request.destination)
+        .map_err(|error| error.to_string())
+}
+
+/// One chapter's source, for the editor pane.
+#[tauri::command]
+pub fn read_chapter(
+    session: State<'_, Mutex<Session>>,
+    path: String,
+) -> CommandResult<ChapterText> {
+    let session = session.lock().map_err(poisoned)?;
+    let open = session.current().ok_or_else(nothing_open)?;
+    open.read_chapter(&path).map_err(|error| error.to_string())
+}
+
+/// Write a chapter back and describe the project as it now stands.
+#[tauri::command]
+pub fn save_chapter(
+    session: State<'_, Mutex<Session>>,
+    path: String,
+    text: String,
+) -> CommandResult<ProjectInfo> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let open = session.current_mut().ok_or_else(nothing_open)?;
+    open.save_chapter(&path, &text)
+        .map_err(|error| error.to_string())
+}
+
+/// Asked something about a project when none is open. The window should not
+/// let this happen, so the message is for whoever is debugging it.
+fn nothing_open() -> String {
+    "no book is open".to_string()
+}
+
 /// A poisoned lock means another command panicked while holding it. Say so
 /// plainly rather than panicking a second time on top of the first.
 fn poisoned<T>(_: std::sync::PoisonError<T>) -> String {
@@ -69,7 +145,16 @@ mod tests {
     /// implementing something nobody agreed to (`AGENTS.md` §3).
     #[test]
     fn the_commands_implemented_here_are_in_the_contract() {
-        for implemented in ["close_project", "open_project", "project_info"] {
+        for implemented in [
+            "close_project",
+            "compile",
+            "export_pdf",
+            "open_project",
+            "project_info",
+            "read_chapter",
+            "recent_projects",
+            "save_chapter",
+        ] {
             assert!(
                 COMMANDS.contains(&implemented),
                 "`{implemented}` is not in booker_core::ipc::COMMANDS"
@@ -80,18 +165,12 @@ mod tests {
     /// The Wave 1 commands still to be written, so that the gap between the
     /// contract and this crate is visible rather than forgotten. Delete a
     /// name from here when its command lands.
+    ///
+    /// Both are track C's: page images are served over the `booker://`
+    /// protocol rather than through IPC, so they arrive with the preview.
     #[test]
     fn what_is_left_to_implement_is_written_down() {
-        let outstanding = [
-            "compile",
-            "export_pdf",
-            "page_image_url",
-            "read_chapter",
-            "recent_projects",
-            "render_page",
-            "save_chapter",
-        ];
-        for name in outstanding {
+        for name in ["page_image_url", "render_page"] {
             assert!(
                 COMMANDS.contains(&name),
                 "`{name}` was removed from the contract; remove it from this list too"

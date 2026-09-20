@@ -13,6 +13,8 @@
 use std::sync::Mutex;
 
 pub mod commands;
+pub mod menu;
+pub mod recent;
 pub mod session;
 
 pub use session::{OpenProject, Session};
@@ -26,10 +28,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Mutex::new(Session::default()))
+        .menu(menu::build)
+        .on_menu_event(menu::on_event)
         .invoke_handler(tauri::generate_handler![
             commands::close_project,
+            commands::compile,
+            commands::export_pdf,
             commands::open_project,
             commands::project_info,
+            commands::read_chapter,
+            commands::recent_projects,
+            commands::save_chapter,
         ])
         .run(tauri::generate_context!())
         .expect("the application failed to start");

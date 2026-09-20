@@ -191,6 +191,60 @@ impl Project {
         self.revision
     }
 
+    /// The chapter at this project-relative path, if the book has one.
+    ///
+    /// The path is matched against the chapters the project actually has,
+    /// which is also the containment check: a path that is not a chapter of
+    /// this book is not found, whatever it points at (`PLAN.md` §11.3).
+    pub fn chapter(&self, relative: &str) -> Option<&Chapter> {
+        self.chapters
+            .iter()
+            .find(|chapter| display_path(chapter.relative_path()) == relative)
+    }
+
+    /// Write a chapter's text and re-read the project.
+    ///
+    /// The write is atomic — a temporary file and a rename — so a reader
+    /// coming in at the wrong moment sees the old file or the new one, never
+    /// half of either (`AGENTS.md` §7). The re-read afterwards is what makes
+    /// the word counts, the diagnostics and the revision agree with what is
+    /// now on disk.
+    ///
+    /// Writing nothing is not a write: an unchanged chapter leaves the file
+    /// and the revision alone, which is what stops a save the user did not
+    /// make from waking every watcher in the system.
+    pub fn write_chapter(&mut self, relative: &str, text: &str) -> Result<Written> {
+        let Some(chapter) = self.chapter(relative) else {
+            return Err(Error::Project {
+                path: PathBuf::from(relative),
+                message: "this book has no such chapter".to_string(),
+            });
+        };
+        let path = chapter.path().to_path_buf();
+        let written = write_if_changed(&path, text)?;
+        if written.changed() {
+            self.reload()?;
+        }
+        Ok(written)
+    }
+
+    /// Read the project from disk again, keeping the revision counter
+    /// moving forward.
+    ///
+    /// This is what an outside change arrives as: an agent rewriting files,
+    /// a branch checkout, our own write. Everything the project holds is
+    /// derived from the folder, so there is nothing to merge — the folder
+    /// is simply right (`AGENTS.md` §7).
+    pub fn reload(&mut self) -> Result<()> {
+        let reloaded = Project::load(self.root())?;
+        let revision = self.revision.next();
+        *self = Project {
+            revision,
+            ..reloaded
+        };
+        Ok(())
+    }
+
     /// Make a targeted change to `book.toml`, in memory.
     ///
     /// Nothing reaches the disk until [`Project::save`]. The typed view is

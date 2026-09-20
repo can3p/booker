@@ -8,6 +8,7 @@
 //! Timing is involved, so every wait here is generous. A test that fails
 //! because a machine was busy teaches nothing.
 
+use std::collections::BTreeSet;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::Duration;
@@ -103,7 +104,7 @@ fn thirty_files_rewritten_at_once_is_a_handful_of_events_rather_than_thirty() {
     // the watcher exists for: the work is proportional to bursts, not to
     // files, because each event costs a reload and a re-render.
     let mut events = 0;
-    let mut reported = Vec::new();
+    let mut reported = BTreeSet::new();
     while let Ok(changed) = watched.events.recv_timeout(Duration::from_secs(2)) {
         events += 1;
         reported.extend(changed.paths);
@@ -112,10 +113,15 @@ fn thirty_files_rewritten_at_once_is_a_handful_of_events_rather_than_thirty() {
         }
     }
 
+    // A set, not a list: paths are deduplicated within a burst, and a file
+    // written just as one burst ends and touched again as the next begins
+    // legitimately appears in both. Linux found that — one chapter of the
+    // thirty arrived twice — and the file having been reported twice is not
+    // the failure. Losing one would be.
     assert_eq!(
         reported.len(),
         FILES,
-        "every file that changed should be reported once, got {reported:?}"
+        "every file that changed should be reported, got {reported:?}"
     );
     assert!(
         events <= 5,

@@ -5,8 +5,23 @@
 //! answers that are not an image — no book open, a revision that has moved
 //! on, and a URL that is not a page.
 //!
-//! `tauri::test` builds an application without a window, so this runs in
-//! CI on all three platforms like any other test.
+//! `tauri::test` builds an application without a window, so this runs as an
+//! ordinary test — **except on Windows**, where the binary will not start.
+//!
+//! What happens there is that the test executable exits with
+//! `STATUS_ENTRYPOINT_NOT_FOUND` before `main` runs: it lives in
+//! `target/debug/deps/`, and the WebView2 loader Tauri links against is not
+//! resolvable from there. It is a loader problem, not a Booker one — the
+//! same crate's unit tests, which link the same libraries, run on Windows
+//! without complaint.
+//!
+//! What Windows loses by skipping this is the end-to-end path, which is
+//! platform-independent: rendering is covered per-platform by
+//! `booker-typst`'s own tests. What it keeps is the part that genuinely
+//! differs there — Windows rewrites `booker://page/…` to
+//! `http://booker.localhost/page/…`, and `protocol.rs`'s unit tests assert
+//! both spellings parse, on every platform.
+#![cfg(not(windows))]
 
 use std::sync::Mutex;
 

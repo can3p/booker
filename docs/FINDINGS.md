@@ -201,3 +201,15 @@ Format:
 - What: a test asserted that rewriting thirty files produces exactly one coalesced event. It passed on a laptop and failed on both Linux and macOS CI runners, because whether thirty writes finish inside the 250 ms debounce window depends on how fast the disk is. The runners split the burst into two events, which is correct behaviour.
 - Why it matters: the temptation on seeing it go red is to lengthen the debounce until CI agrees, which makes the application slower to answer for no reason. The assertion was wrong, not the window. What the watcher exists for is that the work is proportional to bursts rather than to files, so the test now drains the events and asserts every file is reported exactly once across at most a handful of them.
 - Where: `app/src-tauri/tests/watching.rs`. The same shape of mistake is waiting in any test that asserts a debounce boundary.
+
+### A Tauri integration test will not start on Windows
+- Learned: 2026-09-20, Wave 1 / track C
+- What: `app/src-tauri/tests/page_images.rs` uses `tauri::test` to build an application without a window. It runs on macOS and Linux and exits with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) on Windows, *before* `main` — the binary lives in `target\debug\deps\` and the WebView2 loader Tauri links against is not resolvable from there. The same crate's unit tests, linking the same libraries, run on Windows without complaint, so it is the integration-test binary's location rather than anything about the code.
+- Why it matters: the failure looks like a crash in the test and is not one, and the reflex — deleting the test — would throw away the only end-to-end check of the page-image path. It is skipped on Windows with `#![cfg(not(windows))]` instead, which costs nothing platform-specific: the one genuinely Windows-shaped thing, the `http://booker.localhost/page/…` spelling of the URL, is asserted by unit tests that do run there.
+- Where: `app/src-tauri/tests/page_images.rs`. Tauri 2.11, windows-latest runner. Worth revisiting if Tauri gains a documented way to place the loader beside a test binary.
+
+### A file can legitimately be reported by two consecutive bursts
+- Learned: 2026-09-20, Wave 1 / track C
+- What: the watcher deduplicates paths *within* one debounced burst. Rewriting thirty files on a Linux runner produced two bursts, and one chapter — written as the first burst closed and still settling as the second opened — appeared in both. A test comparing the reported paths as a list counted thirty-one.
+- Why it matters: reporting a file twice is harmless (a reload is idempotent) and losing one is not, so the assertion belongs on the set of paths, not the list. Deduplicating *across* bursts would need state with a lifetime and a way to expire it, which is real machinery bought for no gain.
+- Where: `app/src-tauri/tests/watching.rs`.

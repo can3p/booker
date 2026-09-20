@@ -13,7 +13,7 @@ This file is the standing instruction for any agent session. Read it first, foll
 | Document | What it is | Who writes it |
 |---|---|---|
 | `docs/requirements.md` | What the product must do. Changes only when the owner says so. | Owner (agents may add clarifications they were given) |
-| `docs/PLAN.md` | Architecture and the wave-by-wave plan. The design source of truth. | Agents, when a design decision changes |
+| `docs/PLAN.md` | Architecture and the plan for the waves still to come. The design source of truth, and **future work only** — §2. | Agents, when a design decision changes |
 | `docs/OPEN-QUESTIONS.md` | Everything undecided, with who must decide it and by when | Agents append; owner answers |
 | `docs/WAVE-LOG.md` | What each finished wave actually shipped | Agents, at the end of a wave |
 | `docs/FINDINGS.md` | Things learned along the way that a future session would otherwise rediscover | Agents, as they learn them |
@@ -31,6 +31,7 @@ This file is the standing instruction for any agent session. Read it first, foll
 Put every kind of output in exactly one place:
 
 - **A design decision changes** → edit `docs/PLAN.md` in place. Never keep a competing plan in a new file, never leave the plan describing something the code no longer does.
+- **`docs/PLAN.md` holds future work only.** It says what is going to be built and why it is designed that way. Nothing retrospective goes in it: not what a wave shipped, not how it deviated, not what it measured, not what it cost. When a wave finishes, its section in §8 is replaced by a line pointing at `docs/WAVE-LOG.md` — never annotated with an account of what happened. A plan that carries its own history becomes a second, diverging one, and then two documents describe the same wave and a reader cannot tell which is true. The one exception is a decision taken in a finished wave that still constrains what comes next; that is design, and it belongs in the plan stated as a constraint, with the measurement behind it left in `docs/FINDINGS.md`.
 - **Something needs the owner to decide** → append to `docs/OPEN-QUESTIONS.md` and keep going with a stated default. Do not block a wave on an unanswered question unless the question makes the work meaningless.
 - **A wave finishes** → add its entry to `docs/WAVE-LOG.md` (what shipped, what deviated from the plan, the release tag and PR, what was deferred).
 - **A hard-won fact** (a Typst behaviour, a Tauri quirk, a toolchain trap, a benchmark, a dead end and why) → append to `docs/FINDINGS.md`. The test: would a future session waste an hour without this?

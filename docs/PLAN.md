@@ -335,56 +335,19 @@ Key technical choices:
 
 ## 8. Development waves
 
-From Wave 1 on, each wave ends with a signed, installable build for macOS, Windows and Linux, delivered through the updater, **and with the tutorials that teach whatever it added** (`docs/requirements.md`; `AGENTS.md` §4). Waves 0, 0.5 and 0.6 come before there is anything to install: they build the core, the checks that guard it, and the first tutorial. Each wave has a **contracts** step (done by the lead model, about 1 day), then **parallel tracks** in separate git worktrees, then an **integration and release** step.
+From Wave 1 on, each wave ends with a signed, installable build for macOS, Windows and Linux, delivered through the updater, **and with the tutorials that teach whatever it added** (`docs/requirements.md`; `AGENTS.md` §4). Each wave has a **contracts** step (done by the lead model, about 1 day), then **parallel tracks** in separate git worktrees, then an **integration and release** step.
 
 Model tiers used below:
 - **L (large: Opus):** architecture, contracts, solver, codegen core, tricky integration.
 - **M (mid: Sonnet):** features with a clear spec, UI panels, exporters.
 - **S (small: Haiku):** boilerplate, CI YAML, fixtures, golden tests from a template, docs, theme/template content, i18n strings, icon wiring, lint fixes.
 
-### Wave 0: The core — engine, format, command line ✅ done
-**Shipped:** `booker new` creates a book, `booker build` lays it out and writes a PDF. No application yet — this is the spine everything else stands on. See `docs/WAVE-LOG.md`.
+**This section describes work that has not been done yet.** When a wave finishes, its section here is replaced by one line pointing at `docs/WAVE-LOG.md`, which is the only place that says what actually shipped — the plan must never become a second, diverging history (`AGENTS.md` §2).
 
-| Track | Work | Tier |
-|---|---|---|
-| Contracts | Shared types: geometry, project config, diagnostics, compile and render requests, the IPC command list | L |
-| C. Typst engine | Typst 0.15.1 embedded: `World` over a project, fonts, compile to PDF, render pages, incremental recompilation | L |
-| E. Format and CLI | `book.toml` round-tripping with comments and unknown keys preserved, Markdown with reliable source positions, `booker new` and `booker build`, fixtures | L/M |
-| Bridge | A minimal document-model-to-Typst translation so the wave ends with a real PDF (replaced by Wave 2 track B) | L |
+### Waves 0, 0.5 and 0.6 ✅ done
+The core (engine, project format, `booker new` and `booker build`), continuous integration on three platforms, and the first tutorial with the test that replays it. What each of them shipped, what it deviated from and what it cost is in [`docs/WAVE-LOG.md`](WAVE-LOG.md); what was learned building them is in [`docs/FINDINGS.md`](FINDINGS.md). Their briefs remain in `docs/waves/` for reference.
 
-**Measured:** 520–570 ms cold compile of a 201-page novel, 24–29 ms after a one-character edit. That is what makes the live preview in Wave 2 possible.
-
-### Wave 0.5: Continuous integration ✅ done
-**Shipped:** every pull request now runs fmt, clippy, the test suite on macOS, Linux and Windows, the doc build, the bindings and the dependency policy. See `docs/WAVE-LOG.md`, including the three Windows faults the first three-platform run found.
-
-**Demo:** open a pull request that is unformatted, warns under clippy, fails a test and duplicates a dependency key. CI marks it red four times, each naming what is wrong; fixed, it goes green on macOS, Linux and Windows.
-
-A short wave inserted before Wave 1 because Wave 1 merges four parallel tracks and Wave 0's two-track merge already produced a `Cargo.toml` that merged cleanly and then failed to parse. The check that catches that has to exist before the wave that needs it. It is also where we find out whether the Wave 0 code runs anywhere but one macOS laptop — the suite has never been run on Linux or Windows.
-
-| Track | Work | Tier |
-|---|---|---|
-| A. The workflow | `.github/workflows/ci.yml`: fmt, clippy with warnings denied, tests and doc tests, `cargo doc`, bindings generation; caching, `--locked`, cancel-in-progress; issue and pull-request templates | M (YAML: S) |
-| B. Green off macOS | Making the Wave 0 suite pass on Linux and Windows: bundled fonts, line endings in the round-trip tests, path case sensitivity, whether PDF output differs per platform | M |
-| C. Dependency and repository guards | `cargo metadata` smoke check (the Wave 0 bug), `cargo deny` for advisories, licences and duplicate versions, a pre-push hook refusing direct pushes to `main`, the local-command table in `CONTRIBUTING.md` | S |
-
-**Budget:** no scheduled jobs, ever — everything runs on push and pull request. Lint and dependency jobs run once on Linux; the test matrix widens to macOS and Windows only on pull requests into `main`, which is where the three-platform evidence is actually wanted. Brief: `docs/waves/wave-0.5.md`.
-
-Exit criteria: every pull request runs the full check set; the suite passes on three platforms; each check has been seen to fail on purpose; `CONTRIBUTING.md` gives the local command for every check. No installers and no updater — those start with Wave 1.
-
-### Wave 0.6: The first tutorial ✅ done
-**Demo:** someone who has never seen Booker follows `docs/tutorials/01-your-first-book.md` and ends up holding a PDF of a book they wrote. Then change one line of the CLI's output on a branch, and CI goes red naming the tutorial and the line that is now a lie.
-
-`docs/requirements.md` asks for tutorials covering everything Booker can do, and for every wave that adds a visible capability to update or add one in the same change. Booker can already do something and nothing teaches it, so the rule starts here rather than leaving a gap under Wave 1. The second half of the wave is the reason it comes after CI: a tutorial rots silently — nothing fails when a printed line changes, a reader just finds out — so the commands in a tutorial are executed by the test suite.
-
-| Track | Work | Tier |
-|---|---|---|
-| A. The tutorial | `docs/tutorials/01-your-first-book.md`: install, `booker new`, the generated folder, writing chapters, page size and margins, `booker build`, and two faults on purpose so a beginner meets a diagnostic | M |
-| B. Tutorials that check themselves | A test that runs every ```console block in `docs/tutorials/` against a temporary project and compares the output, with `…` as the wildcard for durations and paths; inside the existing `test` job | M |
-| C. Where they are advertised | `README.md` points at the tutorial before the flag list; `CONTRIBUTING.md` says how to add one and how to keep it green | S |
-
-Exit criteria: a beginner can follow the tutorial to their own PDF; a deliberate change to the CLI's output turns `cargo test` red naming the tutorial line; everything Booker can do today can be learned from `docs/tutorials/`. Brief: `docs/waves/wave-0.6.md`.
-
-What shipped, and the one thing the brief did not anticipate: the harness understands four commands — `booker …`, `cd`, `rm` and `echo $?` — rather than being a shell, and it spawns the real binary rather than calling `booker_cli::run` in process, because a tutorial quotes relative paths and exit codes that do not survive being faked. `echo $?` doubles as the way a tutorial declares an expected non-zero exit; a command that fails without the tutorial saying so fails the test. The harness passed on its first run while the tutorial still contained a false sentence about the PDF, which is why a tutorial's pages are now rendered and looked at before the wave closes (`docs/FINDINGS.md`).
+Two decisions made in those waves that still constrain everything below: the Typst engine is kept alive per open project, because the incremental recompile is what makes a live preview possible at all (`docs/FINDINGS.md`), and nothing in CI runs on a schedule — every check runs on push and pull request, with the three-platform test matrix widening only on pull requests into `main`.
 
 ### Wave 1: The application and how it reaches people
 **Demo:** download Booker, install it on macOS, Windows or Linux, open a folder, see the book's pages, export a PDF. Then publish the next version and watch the installed one update itself.

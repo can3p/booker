@@ -1,0 +1,157 @@
+# How a Booker release is built and published.
+#
+# One tagged push produces installers for macOS (Apple Silicon and Intel),
+# Windows and Linux, signs the updater artifacts, and publishes them with a
+# `latest.json` that installed copies check.
+#
+# Three things are worth knowing before changing anything here.
+#
+# **The updater is the point.** `AGENTS.md` §4 makes "the previous release
+# updates itself to the new one" the one check that is never skipped, so the
+# signature and `latest.json` matter more than the installers themselves. An
+# installer that reaches somebody who cannot then be updated is worse than
+# no release.
+#
+# **Signing the installers is not the same as signing the update.** The
+# updater's minisign key lives in repository secrets and is always used —
+# without it an installed copy refuses the download. Apple Developer ID and
+# Windows Authenticode are separate, cost money, and are not set up yet: the
+# build works without them and picks them up when the secrets appear.
+# Until then Gatekeeper and SmartScreen warn on first launch.
+#
+# **The release is a draft until it is checked.** `tauri-action` leaves it
+# unpublished, so the update check in `AGENTS.md` §4 happens before anybody
+# receives it. Publishing is a button, by a person who has done that check.
+
+name: Release
+
+on:
+  push:
+    tags:
+      # v0.2.0 and the like. A tag is the only thing that builds installers:
+      # they cost far more runner time than the rest of CI put together.
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      # A beta tag builds the same installers and marks the GitHub release
+      # as a prerelease, so it is not what `releases/latest` points at and
+      # no installed copy is offered it. Switching channels from inside the
+      # application needs a second manifest at a fixed URL and a setting to
+      # choose it; that is Wave 2, and `docs/OPEN-QUESTIONS.md` Q-12 says
+      # why it was not worth building before anyone has used a beta.
+      - "v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+"
+  # Building the installers without publishing anything, to find out whether
+  # they build at all. Nothing is released, nothing is signed for update.
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Build the bundles without creating a release
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  bundle:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing must not cancel the others: a release where
+      # only Windows is broken is worth knowing about in one run.
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple Silicon)
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS (Intel)
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/tauri-system-deps
+        if: runner.os == 'Linux'
+
+      - name: Rust toolchain
+        run: rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+
+      - name: Enable pnpm
+        run: corepack enable pnpm
+
+      # Generated from the Rust contracts, never committed, and the frontend
+      # does not typecheck without them.
+      - name: Generate the bindings
+        run: cargo test -p booker-core --locked export_bindings
+
+      - name: Install the frontend
+        working-directory: app
+        run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          # Signs the update artifacts. Without these an installed copy
+          # will refuse the download, so a release missing them is broken
+          # even when the installers work.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Apple Developer ID. Absent for now; when these are set, the
+          # macOS bundles are signed and notarized without another change
+          # to this file.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: app
+          args: --target ${{ matrix.target }}
+          # A tag builds a release; a manual run builds nothing but bundles.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: Booker ${{ github.ref_name }}
+          releaseBody: |
+            Installers for macOS, Windows and Linux.
+
+            **The builds are not signed by Apple or Microsoft yet**, so the
+            first launch shows a warning: on macOS, right-click the app and
+            choose Open; on Windows, More info → Run anyway. Updates are
+            signed and verified regardless.
+
+            See CHANGELOG.md for what changed.
+          # Never published by the workflow: a person checks that the
+          # previous release updates itself to this one first
+          # (`AGENTS.md` §4).
+          releaseDraft: true
+          prerelease: ${{ contains(github.ref_name, '-beta.') }}
+          includeUpdaterJson: true
+          updaterJsonKeepUniversal: false
+
+      # A manual run keeps the bundles for a week so somebody can install
+      # one and look at it, without anything being released.
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: bundles-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release/bundle/**/*
+          retention-days: 7
+          if-no-files-found: error

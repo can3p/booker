@@ -95,6 +95,33 @@ their output compared, ```console ignore blocks are shown but not run, a block t
 and `…` in an expected line means "anything here" — for durations, not for anything that
 ought to be stable. Output is always copied from a real run, never typed from memory.
 
+## Making a release
+
+`.github/workflows/release.yml` builds the installers, and only a tag starts it — they cost
+far more runner time than the rest of CI put together.
+
+```bash
+# On the wave branch, after it is merged to main and everything is green:
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+That produces bundles for macOS (Apple Silicon and Intel), Windows and Linux, signs the
+update artifacts with the key in repository secrets, and creates a **draft** GitHub release
+with `latest.json` attached. The draft is deliberate: `AGENTS.md` §4 makes "the previous
+release updates itself to the new one" the one check that is never skipped, and that check
+happens before anybody can receive the release. Publishing is a button, pressed by whoever
+did the check.
+
+To find out whether the installers build without releasing anything, run the workflow by
+hand from the Actions tab; the bundles are kept as artifacts for a week.
+
+Two kinds of signing are involved and they are not the same thing. The **updater** key is
+always used — without it an installed copy refuses the download — and it lives in
+`TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. **Apple Developer ID
+and Windows Authenticode** are separate, cost money, and are not set up yet; the workflow
+already reads their secrets, so signed builds need no change here, only the certificates.
+Until then the first launch warns on both platforms.
+
 ## Refusing to push to main
 
 `main` moves only through a merged pull request (`AGENTS.md` §3). The repository carries a hook that says so before the push leaves your machine — turn it on once per clone:

@@ -137,5 +137,5 @@ git worktree remove ../booker-wt/w0-engine     # after the merge
 ## 9. Working style
 
 - Ask the owner only about things the owner alone can decide (accounts, money, naming, product direction). Everything else: pick the sensible option, write it down, keep moving.
-- When you deviate from `docs/PLAN.md`, update the plan in the same change and note it in the wave log. The plan must always describe the software that exists.
+- When you deviate from `docs/PLAN.md`, update the plan in the same change and note it in the wave log. The plan must always describe the software we intend to build; what was actually built, and how it differed, is the wave log's job (§2).
 - Report honestly: if a test fails, say so with the output; if a step was skipped, say which.

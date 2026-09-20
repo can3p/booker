@@ -104,7 +104,7 @@ cargo xtask --help                          # development tasks
 
 | Document | What it holds |
 |---|---|
-| [`docs/PLAN.md`](docs/PLAN.md) | Architecture and the wave-by-wave plan |
+| [`docs/PLAN.md`](docs/PLAN.md) | Architecture, and the plan for the work still to come |
 | [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) | What each finished milestone actually shipped |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | What is undecided, and what we are doing meanwhile |
 | [`docs/FINDINGS.md`](docs/FINDINGS.md) | Things learned the hard way, so they are learned once |

@@ -13,6 +13,7 @@
 //! per open project, alive for as long as the project is open.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use booker_core::{
     ChapterText, CompileRequest, CompileResult, CompileTarget, Error, ProjectInfo, Result,
@@ -20,10 +21,17 @@ use booker_core::{
 use booker_project::Project;
 use booker_typst::{Compilation, Engine};
 
+use crate::watch::{OwnWrites, Watch};
+
 /// A project the window has open.
 pub struct OpenProject {
     project: Project,
     engine: Engine,
+    /// The writes this process made, so the watcher can drop their echoes.
+    own_writes: Arc<OwnWrites>,
+    /// The running watch on the folder, if one was started. Dropping it
+    /// stops watching, which is what closing a project does.
+    watch: Option<Watch>,
 }
 
 impl OpenProject {
@@ -35,7 +43,23 @@ impl OpenProject {
     pub fn open(root: impl AsRef<Path>) -> Result<Self> {
         let project = Project::load(root)?;
         let engine = Engine::open(project.reference().clone())?;
-        Ok(Self { project, engine })
+        Ok(Self {
+            project,
+            engine,
+            own_writes: Arc::new(OwnWrites::default()),
+            watch: None,
+        })
+    }
+
+    /// The record of our own writes, which the watcher needs to tell an
+    /// outside edit from the echo of a save.
+    pub fn own_writes(&self) -> Arc<OwnWrites> {
+        Arc::clone(&self.own_writes)
+    }
+
+    /// Hold on to a running watch for as long as this project is open.
+    pub fn set_watch(&mut self, watch: Watch) {
+        self.watch = Some(watch);
     }
 
     pub fn project(&self) -> &Project {
@@ -127,7 +151,24 @@ impl OpenProject {
     /// eager autosave the editor does costs one comparison rather than a
     /// write and a reload (`AGENTS.md` §7).
     pub fn save_chapter(&mut self, path: &str, text: &str) -> Result<ProjectInfo> {
+        // Say what we are about to write before writing it, so the change
+        // event this causes is recognised as ours and does not turn into a
+        // reload that fights the editor.
+        if let Some(chapter) = self.project.chapter(path) {
+            self.own_writes.record(chapter.path());
+        }
         self.project.write_chapter(path, text)?;
+        Ok(self.project.info())
+    }
+
+    /// Read the folder again, after something outside changed it.
+    pub fn reload(&mut self) -> Result<ProjectInfo> {
+        self.project.reload()?;
+        // The engine keeps its memoized state: most of a book is unchanged
+        // even when a file was rewritten, and that is what makes the
+        // re-render after an outside edit as cheap as one after a
+        // keystroke.
+        self.refresh_engine()?;
         Ok(self.project.info())
     }
 }

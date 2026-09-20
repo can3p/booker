@@ -14,8 +14,10 @@ use std::sync::Mutex;
 
 pub mod commands;
 pub mod menu;
+pub mod protocol;
 pub mod recent;
 pub mod session;
+pub mod watch;
 
 pub use session::{OpenProject, Session};
 
@@ -30,6 +32,11 @@ pub fn run() {
         .manage(Mutex::new(Session::default()))
         .menu(menu::build)
         .on_menu_event(menu::on_event)
+        // Page images are fetched by the webview, not returned through
+        // IPC: see `protocol` for why the revision is in the URL.
+        .register_uri_scheme_protocol("booker", |context, request| {
+            protocol::handle(context.app_handle(), request)
+        })
         .invoke_handler(tauri::generate_handler![
             commands::close_project,
             commands::compile,
@@ -38,6 +45,8 @@ pub fn run() {
             commands::project_info,
             commands::read_chapter,
             commands::recent_projects,
+            commands::reload_project,
+            commands::render_page,
             commands::save_chapter,
         ])
         .run(tauri::generate_context!())

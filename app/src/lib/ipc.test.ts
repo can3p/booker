@@ -47,3 +47,27 @@ describe("the commands this window calls", () => {
     expect(contract).toStrictEqual([...contract].sort());
   });
 });
+
+describe("the page image URL", () => {
+  /**
+   * The URL shape is written twice too — `page_image_url` in Rust builds
+   * it, `protocol.rs` reads it, and `ipc.ts` builds it again for the
+   * preview. A drift here shows up as a preview of blank pages, with no
+   * error anywhere, so it is worth a test of its own.
+   */
+  it("is spelled the same in TypeScript as in the Rust contract", async () => {
+    const rust = read("../../../crates/booker-core/src/ipc.rs");
+    const template = /format!\("(booker:\/\/[^"]+)"\)/.exec(rust);
+    expect(template, "page_image_url no longer builds its URL with format!").not.toBeNull();
+
+    // Turn the Rust format string into what it produces for known values.
+    const expected = template![1]
+      .replace("{revision}", "7")
+      .replace("{page}", "3")
+      .replace("{scale}", "2")
+      .replace("{format}", "png");
+
+    const { pageImageUrl } = await import("./ipc");
+    expect(pageImageUrl(7n, 3, 2, "png")).toBe(expected);
+  });
+});

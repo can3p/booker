@@ -37,6 +37,10 @@ pub const COMMANDS: &[&str] = &[
     "project_info",
     "read_chapter",
     "recent_projects",
+    // Appended in Wave 1 track C, in an integration commit: the watcher
+    // says *that* the folder changed, and this says what the book now is
+    // (`AGENTS.md` §3 — the list grows by appending, never by renumbering).
+    "reload_project",
     "render_page",
     "save_chapter",
 ];

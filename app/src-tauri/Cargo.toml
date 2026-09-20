@@ -27,6 +27,8 @@ booker-core = { workspace = true }
 booker-doc = { workspace = true }
 booker-project = { workspace = true }
 booker-typst = { workspace = true }
+notify = { workspace = true }
+notify-debouncer-full = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tauri = { workspace = true }
@@ -35,3 +37,6 @@ tauri-plugin-updater = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+# `tauri::test` builds an application without a window, which is how the
+# `booker://` protocol handler is tested against a real book.
+tauri = { workspace = true, features = ["test"] }

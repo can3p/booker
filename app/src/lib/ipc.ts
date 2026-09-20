@@ -19,6 +19,7 @@ import type { ChapterText } from "./bindings/ChapterText";
 import type { CompileResult } from "./bindings/CompileResult";
 import type { ProjectChanged } from "./bindings/ProjectChanged";
 import type { ProjectInfo } from "./bindings/ProjectInfo";
+import type { Revision } from "./bindings/Revision";
 
 /** Open a project folder. The project's own faults come back inside the
  *  answer, in `diagnostics`; a rejected promise means the folder itself
@@ -70,6 +71,29 @@ export function readChapter(path: string): Promise<ChapterText> {
 /** Write a chapter back. What comes back describes the book as it now is. */
 export function saveChapter(path: string, text: string): Promise<ProjectInfo> {
   return invoke<ProjectInfo>("save_chapter", { path, text });
+}
+
+/** Read the project from disk again, after something outside changed it.
+ *  Returns null when the project was closed in between. */
+export function reloadProject(): Promise<ProjectInfo | null> {
+  return invoke<ProjectInfo | null>("reload_project");
+}
+
+/**
+ * The URL of one page image, in the shape `booker_core::ipc::page_image_url`
+ * builds and `app/src-tauri/src/protocol.rs` answers.
+ *
+ * Spelled here rather than imported because it is a URL, not a command —
+ * the point of it is that page images do *not* go through IPC. The two
+ * spellings are kept in step by a test.
+ */
+export function pageImageUrl(
+  revision: Revision,
+  page: number,
+  scale: number,
+  format: "png" | "svg" = "png",
+): string {
+  return `booker://page/${revision}/${page}@${scale}x.${format}`;
 }
 
 /** The project on disk has moved on — an agent, another editor, a checkout.

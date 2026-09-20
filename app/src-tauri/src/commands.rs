@@ -15,11 +15,15 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use booker_core::{ChapterText, CompileResult, CompileTarget, ExportRequest, ProjectInfo};
-use tauri::{AppHandle, Manager, State};
+use booker_core::{
+    ChapterText, CompileResult, CompileTarget, ExportRequest, ProjectInfo, RenderRequest,
+};
+use tauri::ipc::Response;
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::recent;
 use crate::session::Session;
+use crate::watch;
 
 /// What a command hands back when it cannot answer: a sentence, not a type
 /// the UI has to interpret.
@@ -32,16 +36,58 @@ pub fn open_project(
     session: State<'_, Mutex<Session>>,
     root: PathBuf,
 ) -> CommandResult<ProjectInfo> {
-    let info = {
+    let (info, own_writes) = {
         let mut session = session.lock().map_err(poisoned)?;
-        session.open(&root).map_err(|error| error.to_string())?
+        let info = session.open(&root).map_err(|error| error.to_string())?;
+        let own = session
+            .current()
+            .expect("a project was just opened")
+            .own_writes();
+        (info, own)
     };
+
+    // Watch the folder, so an edit made in another editor — or by an agent
+    // rewriting the whole book — reaches the window (`AGENTS.md` §7). A
+    // folder that cannot be watched is not a reason to refuse to open it:
+    // the book is there and readable, it simply will not follow along.
+    let emitter = app.clone();
+    match watch::start(info.project.clone(), own_writes, move |changed| {
+        let _ = emitter.emit("project-changed", changed);
+    }) {
+        Ok(started) => {
+            let mut session = session.lock().map_err(poisoned)?;
+            if let Some(open) = session.current_mut() {
+                open.set_watch(started);
+            }
+        }
+        Err(error) => eprintln!(
+            "booker: not watching {}: {error}",
+            info.project.root.display()
+        ),
+    }
+
     // Remember it under the path the project itself reports, which is
     // canonical — two different spellings of one folder are one entry.
     if let Ok(dir) = app.path().app_config_dir() {
         recent::remember(&dir, &info.project.root);
     }
     Ok(info)
+}
+
+/// Read the project from disk again, after something outside changed it.
+///
+/// The window calls this when a `project-changed` event arrives, rather
+/// than being handed the new state with the event: the event says *that*
+/// something changed, and this says what the book now is. One answer to
+/// one question.
+#[tauri::command]
+pub fn reload_project(session: State<'_, Mutex<Session>>) -> CommandResult<Option<ProjectInfo>> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let Some(open) = session.current_mut() else {
+        // The project was closed between the event and this call.
+        return Ok(None);
+    };
+    open.reload().map(Some).map_err(|error| error.to_string())
 }
 
 /// Describe the project that is already open.
@@ -122,6 +168,26 @@ pub fn save_chapter(
         .map_err(|error| error.to_string())
 }
 
+/// One page, rendered.
+///
+/// The preview does not use this — it fetches `booker://` URLs, because
+/// base64 through a JSON channel is the slowest thing in the application.
+/// This is for the times a caller wants the bytes themselves, and it is
+/// what `booker render --page` will be built on (Wave 7). The reply is a
+/// raw body rather than a JSON array, so the bytes are not re-encoded.
+#[tauri::command]
+pub fn render_page(
+    session: State<'_, Mutex<Session>>,
+    request: RenderRequest,
+) -> CommandResult<Response> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let open = session.current_mut().ok_or_else(nothing_open)?;
+    open.engine_mut()
+        .render(&request)
+        .map(Response::new)
+        .map_err(|error| error.to_string())
+}
+
 /// Asked something about a project when none is open. The window should not
 /// let this happen, so the message is for whoever is debugging it.
 fn nothing_open() -> String {
@@ -153,6 +219,8 @@ mod tests {
             "project_info",
             "read_chapter",
             "recent_projects",
+            "reload_project",
+            "render_page",
             "save_chapter",
         ] {
             assert!(
@@ -162,19 +230,13 @@ mod tests {
         }
     }
 
-    /// The Wave 1 commands still to be written, so that the gap between the
-    /// contract and this crate is visible rather than forgotten. Delete a
-    /// name from here when its command lands.
-    ///
-    /// Both are track C's: page images are served over the `booker://`
-    /// protocol rather than through IPC, so they arrive with the preview.
+    /// `page_image_url` is in the contract as the URL *shape* the preview
+    /// uses, built by `booker_core::ipc::page_image_url` and answered by
+    /// `crate::protocol` — there is no `#[tauri::command]` for it and there
+    /// should not be, because the whole point is that page images do not
+    /// travel through IPC.
     #[test]
-    fn what_is_left_to_implement_is_written_down() {
-        for name in ["page_image_url", "render_page"] {
-            assert!(
-                COMMANDS.contains(&name),
-                "`{name}` was removed from the contract; remove it from this list too"
-            );
-        }
+    fn the_one_name_without_a_command_is_the_protocol_url() {
+        assert!(COMMANDS.contains(&"page_image_url"));
     }
 }

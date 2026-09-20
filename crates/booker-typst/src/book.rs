@@ -3,14 +3,17 @@
 //! ## Deliberately temporary
 //!
 //! The real translation — styles, page rules, frames, anchored images — is
-//! Wave 2 track B, and lives in `booker-typst`. This exists so that Wave 0
-//! ends with a book a person can actually look at: `booker build` writes a
-//! PDF instead of describing one. It covers headings, paragraphs, emphasis,
-//! lists, quotes, code, images and links, and nothing else.
+//! Wave 2 track B, and replaces this file in place. This exists so that
+//! Wave 0 ended with a book a person can actually look at: `booker build`
+//! writes a PDF instead of describing one. It covers headings, paragraphs,
+//! emphasis, lists, quotes, code, images and links, and nothing else.
 //!
-//! When the real codegen lands, this file goes away. Until then it is the
-//! answer to "does the engine and the format actually fit together", which
-//! is worth knowing before three more waves are built on the assumption.
+//! It was written in `booker-cli` and moved here in Wave 1, when the app
+//! needed the same translation. There is one way for a book to become
+//! pages, and both the window and the terminal go through it: two would
+//! drift, and `AGENTS.md` §6 forbids the second implementation. The move
+//! also puts it where `PLAN.md` §6 always had it — codegen belongs beside
+//! the engine — so Wave 2 track B replaces one file rather than two.
 
 use booker_core::{BookConfig, Length, Margins};
 use booker_doc::{Block, Document, Inline, List, ListItem};

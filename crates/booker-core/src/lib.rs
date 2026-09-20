@@ -19,5 +19,6 @@ pub use compile::{
 pub use diagnostic::{Diagnostic, Fix, LayoutLocation, Severity, SourceLocation};
 pub use error::{Error, Result};
 pub use geometry::{Length, Margins, PageSize, Unit};
+pub use ipc::{ChapterSummary, ChapterText, ExportRequest, ProjectChanged, ProjectInfo};
 pub use path::display_path;
 pub use project::{BookConfig, PageConfig, ProjectRef, Revision, FORMAT_VERSION};

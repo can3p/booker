@@ -4,19 +4,17 @@
 //! becomes pages lives behind this one function: the CLI knows the request
 //! and the result (the `booker_core` contracts) and nothing else.
 //!
-//! Today it translates the document model to Typst through
-//! [`crate::bridge`] — a minimal translation that exists so Wave 0 ends with
-//! a book a person can look at. When the real codegen lands in
-//! `booker-typst` (Wave 2 track B), this function calls that instead, and
-//! the bridge is deleted. Nothing else in the CLI changes.
+//! The translation from the document model to Typst lives in
+//! `booker_typst::book`, behind [`Engine::set_book`]; the application calls
+//! the same one, so a book cannot lay out differently in the window and in
+//! the terminal (`AGENTS.md` §6). What is left here is the part that is the
+//! CLI's alone: deciding where the file goes and writing it.
 
 use std::path::{Path, PathBuf};
 
 use booker_core::{BookConfig, CompileRequest, CompileResult};
 use booker_doc::Document;
 use booker_typst::Engine;
-
-use crate::bridge;
 
 /// What a build attempt did.
 pub enum Outcome {
@@ -29,23 +27,20 @@ pub enum Outcome {
 
 /// Lay the book out and write `output`.
 ///
-/// The generated Typst is kept in memory under the engine's entry point
-/// rather than written next to the author's files: `.booker/` is a cache
-/// that must be safe to delete, and a project folder should not fill up
-/// with generated source nobody asked for.
+/// One engine, used once: a build is a single compile and then the process
+/// exits. The application keeps its engine alive instead, which is what
+/// makes an edit re-render in milliseconds (`docs/FINDINGS.md`).
 pub fn compile(
     request: &CompileRequest,
     config: &BookConfig,
     chapters: &[(&str, &Document)],
     output: &Path,
 ) -> Outcome {
-    let source = bridge::book_to_typst(config, chapters);
-
     let mut engine = match Engine::open(request.project.clone()) {
         Ok(engine) => engine,
         Err(error) => return Outcome::Failed(error.to_string()),
     };
-    if let Err(error) = engine.set_source(booker_typst::DEFAULT_ENTRYPOINT, source) {
+    if let Err(error) = engine.set_book(config, chapters) {
         return Outcome::Failed(error.to_string());
     }
 

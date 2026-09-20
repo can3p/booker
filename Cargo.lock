@@ -234,8 +234,10 @@ name = "booker-typst"
 version = "0.1.0"
 dependencies = [
  "booker-core",
+ "booker-doc",
  "comemo",
  "tempfile",
+ "toml",
  "typst",
  "typst-kit",
  "typst-layout",

@@ -18,6 +18,7 @@ cargo fmt --all                             # formatting
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test -p booker-core export_bindings   # regenerate TypeScript types from the Rust contracts
 cargo xtask --help                          # development tasks (golden snapshots, evals)
+cargo xtask third-party                     # rewrite THIRD-PARTY.md from the dependency tree
 ```
 
 And in `app/`, for the application:
@@ -45,11 +46,24 @@ fresh clone, or the typecheck fails on imports that do not exist yet.
 | `test` | The suite passes — including the tutorial replay below — and on a pull request into `main`, on macOS, Linux **and** Windows | `cargo test --workspace --all-targets --locked --no-fail-fast` then `cargo test --workspace --doc --locked` |
 | `docs` | `cargo doc` builds with no broken intra-doc links | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked` |
 | `bindings` | The contracts still export TypeScript | `cargo test -p booker-core --locked export_bindings` |
-| `deps` | The workspace manifests parse, and the dependency tree is acceptable | `cargo metadata --locked --format-version 1 > /dev/null` then `cargo deny check bans licenses sources advisories` |
+| `deps` | The workspace manifests parse, the dependency tree is acceptable, and `THIRD-PARTY.md` describes it | `cargo metadata --locked --format-version 1 > /dev/null`, `cargo deny check bans licenses sources advisories`, then `cargo xtask third-party --check` |
+| `app` | The application typechecks, its tests pass and its bundle builds | in `app/`: `pnpm lint`, `pnpm test`, `pnpm build` |
+| `changes` | Which parts of the tree a pull request touches, so `app` is skipped when it touches none of them | — |
 
 The Rust jobs that compile the whole workspace — `clippy`, `test` and `docs` — install the
 Linux desktop libraries first, because `app/src-tauri` is a workspace member from Wave 1 on.
 That is `.github/actions/tauri-system-deps`, in one place rather than pasted into three jobs.
+
+**`THIRD-PARTY.md` is generated, not written.** `cargo xtask third-party` reads the licence
+data `cargo deny` already produces and rewrites the file; the `deps` job runs it with
+`--check` and fails when a dependency has changed and nobody regenerated it. Editing the file
+by hand is wasted work — the next run overwrites it. The font notices in it are copied
+verbatim from `crates/booker-typst/fonts/NOTICE.txt`, which *is* written by hand.
+
+**The `app` job is skipped when nothing it covers changed.** A `changes` job diffs the pull
+request against its base and looks for `app/`, `crates/booker-core/` (the contracts the
+TypeScript types are generated from) or the workflow itself. A push to `main` always runs
+everything, because that is what a release is cut from.
 
 `--locked` everywhere: a change that edits a dependency without committing `Cargo.lock` fails rather than quietly resolving something else. `cargo test --all-targets` does not run doc tests, which is why the `test` job runs two commands.
 

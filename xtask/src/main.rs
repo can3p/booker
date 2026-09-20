@@ -6,6 +6,8 @@
 
 use clap::{Parser, Subcommand};
 
+mod third_party;
+
 #[derive(Parser)]
 #[command(name = "xtask", about = "Development tasks for Booker")]
 struct Cli {
@@ -25,6 +27,12 @@ enum Command {
         #[arg(long)]
         filter: Option<String>,
     },
+    /// Rewrite THIRD-PARTY.md from the dependency tree.
+    ThirdParty {
+        /// Fail if the file is out of date instead of rewriting it.
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -34,5 +42,6 @@ fn main() -> anyhow::Result<()> {
         }
         Command::Golden => anyhow::bail!("golden snapshots arrive with Wave 2 track G"),
         Command::Eval { .. } => anyhow::bail!("the eval harness arrives with Wave 7 track I"),
+        Command::ThirdParty { check } => third_party::run(check),
     }
 }

@@ -35,6 +35,40 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
+  # Which parts of the tree this change touches. The application's jobs
+  # need Node and a pnpm install, which a Rust-only change should not pay
+  # for (docs/waves/wave-1.md, track D).
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Enough history to diff against the base of the pull request.
+          fetch-depth: 0
+      - id: filter
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            # A push to main rebuilds everything: it is what the release
+            # is cut from, so nothing is skipped there.
+            echo "app=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          base="origin/${{ github.base_ref }}"
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          changed=$(git diff --name-only "$base"...HEAD)
+          echo "$changed"
+          # The contracts are what the TypeScript types are generated from,
+          # so a change to them is a change to the application too.
+          if echo "$changed" | grep -qE '^(app/|crates/booker-core/|\.github/workflows/ci\.yml)'; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+          fi
+
   fmt:
     name: fmt
     runs-on: ubuntu-latest
@@ -99,6 +133,34 @@ jobs:
       # will depend on from Wave 1 on.
       - run: cargo test -p booker-core --locked export_bindings
 
+  app:
+    name: app
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          # One place says which Node this is built with.
+          node-version-file: .tool-versions
+      - name: Enable pnpm
+        run: corepack enable pnpm
+      - uses: Swatinem/rust-cache@v2
+      # The TypeScript types are generated from the Rust contracts and are
+      # not committed, so nothing below typechecks without this first.
+      - name: Generate the bindings
+        working-directory: .
+        run: cargo test -p booker-core --locked export_bindings
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      # A bundle that does not build is a release that does not happen.
+      - run: pnpm build
+
   deps:
     name: deps
     runs-on: ubuntu-latest
@@ -114,3 +176,13 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check bans licenses sources advisories
+      # THIRD-PARTY.md is assembled from the same licence data, so a new
+      # dependency that nobody regenerated it for is caught here rather
+      # than shipped with notices that do not describe the build.
+      - name: Install cargo-deny
+        run: |
+          version=0.20.2
+          curl -fsSL "https://github.com/EmbarkStudios/cargo-deny/releases/download/${version}/cargo-deny-${version}-x86_64-unknown-linux-musl.tar.gz" \
+            | tar -xz --strip-components=1 -C /usr/local/bin "cargo-deny-${version}-x86_64-unknown-linux-musl/cargo-deny"
+      - name: Third-party notices are current
+        run: cargo xtask third-party --check

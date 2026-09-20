@@ -27,6 +27,26 @@ impl Written {
     }
 }
 
+/// The prefix and suffix of the temporary file every atomic write goes
+/// through.
+///
+/// They are public because the file watcher has to recognise them: the
+/// temporary file is created and renamed away inside the project folder,
+/// so it produces change events like any other file, and a reader who was
+/// told the book changed because of one would be told a lie. The two
+/// places must agree, so the names live here, next to the code that makes
+/// them (`is_write_temporary`).
+pub const TEMP_PREFIX: &str = ".booker-";
+pub const TEMP_SUFFIX: &str = ".tmp";
+
+/// Whether this path is the temporary file of an atomic write of ours
+/// rather than a file of the book.
+pub fn is_write_temporary(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with(TEMP_PREFIX) && name.ends_with(TEMP_SUFFIX))
+}
+
 /// Write `contents` to `path`, atomically, and only if it would change the
 /// file.
 pub fn write_if_changed(path: &Path, contents: &str) -> Result<Written> {
@@ -48,8 +68,8 @@ pub fn write_atomic(path: &Path, contents: &[u8]) -> Result<()> {
     })?;
 
     let mut file = tempfile::Builder::new()
-        .prefix(".booker-")
-        .suffix(".tmp")
+        .prefix(TEMP_PREFIX)
+        .suffix(TEMP_SUFFIX)
         .tempfile_in(directory)
         .map_err(|error| Error::Project {
             path: path.to_path_buf(),

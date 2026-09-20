@@ -155,7 +155,7 @@ impl OpenProject {
         // event this causes is recognised as ours and does not turn into a
         // reload that fights the editor.
         if let Some(chapter) = self.project.chapter(path) {
-            self.own_writes.record(chapter.path());
+            self.own_writes.record(chapter.path(), text);
         }
         self.project.write_chapter(path, text)?;
         Ok(self.project.info())

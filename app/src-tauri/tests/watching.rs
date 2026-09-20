@@ -133,14 +133,46 @@ fn thirty_files_rewritten_at_once_is_a_handful_of_events_rather_than_thirty() {
 fn a_write_we_made_ourselves_is_not_reported() {
     let watched = watched_book();
     let chapter = watched.root.join("content").join("01-the-first-chapter.md");
+    let saved = "# Saved By Us\n\nFrom the editor pane.\n";
 
-    // What `OpenProject::save_chapter` does: say so, then write.
-    watched.own.record(&chapter);
-    std::fs::write(&chapter, "# Saved By Us\n\nFrom the editor pane.\n").expect("the write");
+    // Exactly what `OpenProject::save_chapter` does, through the writer it
+    // uses. Writing the file directly would miss the half of a save that
+    // the watcher finds hardest: the temporary file an atomic write makes
+    // and renames away inside the folder it is watching.
+    watched.own.record(&chapter, saved);
+    booker_project::write_if_changed(&chapter, saved).expect("the write");
 
     assert!(
         watched.events.recv_timeout(Duration::from_secs(2)).is_err(),
         "the echo of our own save must not turn into a reload that fights the editor"
+    );
+}
+
+#[test]
+fn somebody_editing_the_file_we_just_saved_is_still_reported() {
+    let watched = watched_book();
+    let chapter = watched.root.join("content").join("01-the-first-chapter.md");
+    let saved = "# Saved By Us\n\nFrom the editor pane.\n";
+
+    watched.own.record(&chapter, saved);
+    booker_project::write_if_changed(&chapter, saved).expect("the write");
+
+    // An agent rewrites the same chapter a moment later. Recognising our
+    // own write must not turn into ignoring the file for a while
+    // afterwards — that would lose somebody's work.
+    std::fs::write(&chapter, "# Rewritten\n\nBy somebody else.\n").expect("the write");
+
+    let changed = watched
+        .events
+        .recv_timeout(WAIT)
+        .expect("an edit on top of our save is reported");
+    assert!(
+        changed
+            .paths
+            .iter()
+            .any(|path| path.ends_with("01-the-first-chapter.md")),
+        "the event names the file that changed: {:?}",
+        changed.paths
     );
 }
 

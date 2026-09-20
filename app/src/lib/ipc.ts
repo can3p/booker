@@ -13,7 +13,11 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
+import type { ChapterText } from "./bindings/ChapterText";
+import type { CompileResult } from "./bindings/CompileResult";
+import type { ProjectChanged } from "./bindings/ProjectChanged";
 import type { ProjectInfo } from "./bindings/ProjectInfo";
 
 /** Open a project folder. The project's own faults come back inside the
@@ -31,4 +35,54 @@ export function projectInfo(): Promise<ProjectInfo | null> {
 /** Close the open project. Closing nothing is not an error. */
 export function closeProject(): Promise<void> {
   return invoke<void>("close_project");
+}
+
+/** The folders this window has opened before, newest first. */
+export function recentProjects(): Promise<string[]> {
+  return invoke<string[]>("recent_projects");
+}
+
+/** Lay the book out without writing anything. A book with errors returns a
+ *  result with no pages and the errors in `diagnostics`. */
+export function compile(): Promise<CompileResult> {
+  return invoke<CompileResult>("compile");
+}
+
+/** Lay the book out and write a PDF to `destination`. */
+export function exportPdf(
+  project: ProjectInfo,
+  destination: string,
+): Promise<CompileResult> {
+  return invoke<CompileResult>("export_pdf", {
+    request: {
+      project: project.project,
+      revision: project.revision,
+      destination,
+    },
+  });
+}
+
+/** One chapter's source, for the editor pane. */
+export function readChapter(path: string): Promise<ChapterText> {
+  return invoke<ChapterText>("read_chapter", { path });
+}
+
+/** Write a chapter back. What comes back describes the book as it now is. */
+export function saveChapter(path: string, text: string): Promise<ProjectInfo> {
+  return invoke<ProjectInfo>("save_chapter", { path, text });
+}
+
+/** The project on disk has moved on — an agent, another editor, a checkout.
+ *  Wave 1 track C is what starts emitting this; the listener is here so the
+ *  window is already written to expect it. */
+export function onProjectChanged(
+  handler: (changed: ProjectChanged) => void,
+): Promise<UnlistenFn> {
+  return listen<ProjectChanged>("project-changed", (event) => handler(event.payload));
+}
+
+/** A menu item was chosen. The payload is the item's id, as `menu.rs`
+ *  spells it, so the menu and the window's own buttons run one code path. */
+export function onMenu(handler: (id: string) => void): Promise<UnlistenFn> {
+  return listen<string>("menu", (event) => handler(event.payload));
 }

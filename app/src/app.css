@@ -14,6 +14,10 @@
   --border: #e2ded4;
   --accent: #3b5b8c;
   --error: #a33223;
+  --warning: #9a6b1e;
+  --hover: #f1eee7;
+  --selected: #e6e1d6;
+  --sunken: #f5f3ee;
 
   color-scheme: light dark;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -29,6 +33,10 @@
     --border: #35332d;
     --accent: #9ab6e0;
     --error: #e08175;
+    --warning: #d8b169;
+    --hover: #24231f;
+    --selected: #2e2c27;
+    --sunken: #151412;
   }
 }
 
@@ -40,6 +48,8 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
+  /* The window is the viewport: panes scroll, the page does not. */
+  overflow: hidden;
 }
 
 h1,

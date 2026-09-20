@@ -12,11 +12,13 @@
 //! — but only if the same engine does it (`docs/FINDINGS.md`). One engine
 //! per open project, alive for as long as the project is open.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use booker_core::{ProjectInfo, Result};
+use booker_core::{
+    ChapterText, CompileRequest, CompileResult, CompileTarget, Error, ProjectInfo, Result,
+};
 use booker_project::Project;
-use booker_typst::Engine;
+use booker_typst::{Compilation, Engine};
 
 /// A project the window has open.
 pub struct OpenProject {
@@ -64,6 +66,69 @@ impl OpenProject {
             .collect();
         let config = self.project.config().clone();
         self.engine.set_book(&config, &chapters)
+    }
+
+    /// Lay the book out.
+    ///
+    /// A book with errors in it still returns a result — with no pages and
+    /// the errors in `diagnostics`. `Err` is for a request the engine
+    /// cannot answer at all.
+    pub fn compile(&mut self, target: CompileTarget) -> Result<Compilation> {
+        self.refresh_engine()?;
+        let request = CompileRequest {
+            project: self.project.reference().clone(),
+            target,
+            revision: self.project.revision(),
+        };
+        self.engine.compile(&request)
+    }
+
+    /// Lay the book out and write the PDF where the user asked for it.
+    ///
+    /// The destination comes from a file dialog rather than from us, so it
+    /// is the one path in the application that legitimately points outside
+    /// the project folder.
+    pub fn export_pdf(&mut self, destination: &Path) -> Result<CompileResult> {
+        let compilation = self.compile(CompileTarget::Pdf)?;
+        let Some(pdf) = compilation.pdf else {
+            // The export failed, and the compilation says why. Handing back
+            // the diagnostics beats inventing a message here.
+            return Ok(compilation.result);
+        };
+        if let Some(parent) = destination.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| Error::Project {
+                path: parent.to_path_buf(),
+                message: format!("could not create the folder: {error}"),
+            })?;
+        }
+        booker_project::write_atomic(destination, &pdf)?;
+        Ok(compilation.result)
+    }
+
+    /// One chapter's source, on its way to the editor pane.
+    pub fn read_chapter(&self, path: &str) -> Result<ChapterText> {
+        let Some(chapter) = self.project.chapter(path) else {
+            return Err(Error::Project {
+                path: PathBuf::from(path),
+                message: "this book has no such chapter".to_string(),
+            });
+        };
+        Ok(ChapterText {
+            project: self.project.reference().clone(),
+            path: path.to_string(),
+            text: chapter.source().to_string(),
+            revision: self.project.revision(),
+        })
+    }
+
+    /// Write a chapter back, and describe the project as it now stands.
+    ///
+    /// Saving an unchanged chapter writes nothing and moves nothing, so the
+    /// eager autosave the editor does costs one comparison rather than a
+    /// write and a reload (`AGENTS.md` §7).
+    pub fn save_chapter(&mut self, path: &str, text: &str) -> Result<ProjectInfo> {
+        self.project.write_chapter(path, text)?;
+        Ok(self.project.info())
     }
 }
 
@@ -144,6 +209,88 @@ mod tests {
         assert!(session.current().is_none());
         // Closing twice is what a window does when the user is quick.
         session.close();
+    }
+
+    #[test]
+    fn a_book_lays_out_into_pages() {
+        let dir = a_book();
+        let mut session = Session::default();
+        session.open(dir.path().join("mia")).expect("it opens");
+
+        let compilation = session
+            .current_mut()
+            .unwrap()
+            .compile(CompileTarget::Layout)
+            .expect("it compiles");
+
+        assert!(!compilation.result.pages.is_empty(), "a book has pages");
+        assert!(!compilation.has_errors(), "the starter book has no errors");
+        assert!(
+            compilation.pdf.is_none(),
+            "a layout was asked for, not a file"
+        );
+    }
+
+    #[test]
+    fn exporting_writes_a_pdf_where_it_was_asked_to() {
+        let dir = a_book();
+        let mut session = Session::default();
+        session.open(dir.path().join("mia")).expect("it opens");
+        // Somewhere outside the project, as a file dialog would give us,
+        // and inside a folder that does not exist yet.
+        let destination = dir.path().join("exports").join("mia.pdf");
+
+        let result = session
+            .current_mut()
+            .unwrap()
+            .export_pdf(&destination)
+            .expect("it exports");
+
+        assert!(!result.pages.is_empty());
+        let bytes = std::fs::read(&destination).expect("the file is there");
+        assert!(bytes.starts_with(b"%PDF"), "and it is a PDF");
+    }
+
+    #[test]
+    fn a_chapter_can_be_read_and_written_back() {
+        let dir = a_book();
+        let mut session = Session::default();
+        let info = session.open(dir.path().join("mia")).expect("it opens");
+        let path = info.chapters[0].path.clone();
+
+        let chapter = session
+            .current()
+            .unwrap()
+            .read_chapter(&path)
+            .expect("the chapter the sidebar named");
+        assert!(chapter.text.contains("The First Chapter"));
+
+        let after = session
+            .current_mut()
+            .unwrap()
+            .save_chapter(&path, "# Chapter the First\n\nIt was a bright day.\n")
+            .expect("it saves");
+
+        assert_eq!(
+            after.chapters[0].title.as_deref(),
+            Some("Chapter the First"),
+            "what comes back describes the book as it now is"
+        );
+        assert!(after.revision > chapter.revision);
+    }
+
+    #[test]
+    fn reading_a_chapter_outside_the_book_is_refused() {
+        let dir = a_book();
+        let mut session = Session::default();
+        session.open(dir.path().join("mia")).expect("it opens");
+
+        let error = session
+            .current()
+            .unwrap()
+            .read_chapter("../../../etc/passwd")
+            .expect_err("not a chapter of this book");
+        assert!(error.to_string().contains("no such chapter"));
     }
 
     #[test]

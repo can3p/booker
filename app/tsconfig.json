@@ -13,7 +13,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["vite/client", "svelte", "vitest/globals"]
+    "types": ["vite/client", "svelte", "vitest/globals", "node"]
   },
   "include": [
     "src/**/*.ts",

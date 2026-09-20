@@ -687,8 +687,9 @@ Settled (2026-09-19):
 4. **License: MIT.** Typst is Apache-2.0 and stays a dependency, so the build ships a third-party notices file; bundled fonts keep their own licences (OFL and similar).
 5. **No git features inside the app for 1.0.** The format stays git-friendly and outside changes reload cleanly.
 6. **Free placement is a first-class feature**, not an escape hatch (§5.6, Wave 5).
+7. **`main` is protected by a repository ruleset** ("protect main"): no deletion, no force-push, and every change arrives through a pull request. It is a ruleset rather than the older branch-protection settings, so it is read with `gh api repos/can3p/booker/rules/branches/main`.
 
-Still open: tracked in `docs/OPEN-QUESTIONS.md`, each with the default we proceed with in the meantime. The ones outstanding today are the final app name and bundle identifier (must be settled before the first public release), the bundled font set, whether print targets need CMYK or PDF/X, spell-checking, and how shared templates are distributed.
+Still open: tracked in `docs/OPEN-QUESTIONS.md`, each with the default we proceed with in the meantime. The ones outstanding today are the final app name and bundle identifier (must be settled before the first public release), whether the branch ruleset should require the CI checks to pass, the bundled font set, whether print targets need CMYK or PDF/X, spell-checking, and how shared templates are distributed.
 
 ## 14. Parallel development with git worktrees
 

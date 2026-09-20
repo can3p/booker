@@ -1,6 +1,6 @@
 # Open questions
 
-Everything not yet decided. Agents append here rather than guessing silently; the owner answers. When a question is answered, move the answer into `docs/PLAN.md` (§12 Decisions) and mark the entry **Answered** with the date, keeping it here for one wave so the history is visible.
+Everything not yet decided. Agents append here rather than guessing silently; the owner answers. When a question is answered, move the answer into `docs/PLAN.md` (§13 Decisions) and mark the entry **Answered** with the date, keeping it here for one wave so the history is visible.
 
 Format:
 
@@ -89,4 +89,18 @@ Format:
 - Context: the Typst dependency tree is expensive to compile, and only the owner can enable branch protection on GitHub — an agent can add a pre-push hook, which is advice, not a gate.
 - Options: (a) Linux-only checks on every push, three platforms only on pull requests into `main`; (b) three platforms on every pull request; (c) three platforms on everything.
 - Default we are proceeding with: (a), with no scheduled jobs of any kind, and a request to the owner to turn on branch protection for `main` with `fmt`, `clippy` and `test` as required checks once they are green.
-- Status: **Half answered 2026-09-19.** The spend question is settled by measurement and is now what CI does: a pull request into a wave branch costs about a minute of Linux time, and a pull request into `main` about six minutes of wall clock and fifteen of runner time, because Windows is five of those (see the wave log). **The branch-protection half is still open and only the owner can close it**: `.githooks/pre-push` refuses a direct push to `main` after `git config core.hooksPath .githooks`, but a hook is advice — `--no-verify` walks past it and a fresh clone has it switched off. Turning on branch protection for `main`, with `fmt`, `clippy`, `test (ubuntu-latest)`, `docs`, `bindings` and `deps` as required checks, is one settings page and the thing that makes `AGENTS.md` §3 true.
+- Status: **Answered 2026-09-20.** Both halves are closed.
+
+  The spend question was settled by measurement and is now what CI does: a pull request into a wave branch costs about a minute of Linux time, and a pull request into `main` about six minutes of wall clock and fifteen of runner time, because Windows is five of those (see the wave log). No job runs on a schedule.
+
+  Branch protection is on, as a repository **ruleset** named "protect main" rather than the older branch-protection settings — which is why `gh api repos/can3p/booker/branches/main/protection` answers "Branch not protected" and `gh api repos/can3p/booker/rules/branches/main` is the query that shows it. It forbids deletion and force-pushes and requires a pull request (zero approvals), so `AGENTS.md` §3 is now enforced rather than merely asked for, and `.githooks/pre-push` is the early warning rather than the only one.
+
+  **One gap is left, and it is the owner's settings page:** the ruleset has no required status checks, so a red pull request can still be merged. Adding `fmt`, `clippy`, `test (ubuntu-latest)`, `docs`, `bindings` and `deps` to it is what makes CI a gate. Tracked as Q-11 rather than left inside an answered question.
+
+### Q-11 — Should the "protect main" ruleset require the CI checks to pass?
+- Raised: 2026-09-20, wave 1 ramp-up
+- Needed by: before the Wave 1 release, which is the first merge into `main` that produces something people install
+- Context: the ruleset that closed Q-10 requires a pull request but lists no required status checks, so nothing stops a red one from being merged. The six job names are stable and have been green on every pull request since Wave 0.5.
+- Options: add all six as required checks; or require only `fmt`, `clippy` and `test (ubuntu-latest)` and let the cheaper jobs advise; or leave CI advisory.
+- Default we are proceeding with: ask before the Wave 1 merge, and treat a red check as blocking by convention until then.
+- Status: Open

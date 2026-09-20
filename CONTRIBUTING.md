@@ -135,7 +135,9 @@ Until then the first launch warns on both platforms.
 git config core.hooksPath .githooks
 ```
 
-It is advice, not a gate: `git push --no-verify` goes around it, and branch protection on GitHub is the real thing.
+It is advice, not a gate: `git push --no-verify` goes around it. The real gate is the "protect main" ruleset on GitHub, which refuses a direct push outright, requires a linear history, and requires `fmt`, `clippy`, `test (ubuntu-latest)`, `docs`, `bindings` and `deps` to be green before a pull request can be merged. `rebase` is the only merge method it allows, so a wave lands on `main` as its own commits.
+
+The ruleset is invisible to the older branch-protection API — `gh api repos/can3p/booker/branches/main/protection` answers "Branch not protected". Read it with `gh api repos/can3p/booker/rules/branches/main`.
 
 ## Working on several tracks at once
 

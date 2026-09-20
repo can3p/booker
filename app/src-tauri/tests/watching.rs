@@ -78,12 +78,14 @@ fn an_edit_made_by_somebody_else_arrives() {
 }
 
 #[test]
-fn thirty_files_rewritten_at_once_is_one_event() {
+fn thirty_files_rewritten_at_once_is_a_handful_of_events_rather_than_thirty() {
+    const FILES: usize = 30;
+
     let watched = watched_book();
     let content = watched.root.join("content");
 
     // An agent asked to fix the spelling in a whole book.
-    for index in 0..30 {
+    for index in 0..FILES {
         std::fs::write(
             content.join(format!("{index:02}-chapter.md")),
             format!("# Chapter {index}\n\nRewritten.\n"),
@@ -91,24 +93,33 @@ fn thirty_files_rewritten_at_once_is_one_event() {
         .expect("the write");
     }
 
-    let changed = watched
-        .events
-        .recv_timeout(WAIT)
-        .expect("the burst is reported");
-    assert!(
-        changed.paths.len() > 1,
-        "a burst is coalesced into one event carrying many paths, got {:?}",
-        changed.paths
-    );
+    // Collect everything the burst produces, then stop when the folder has
+    // been quiet for longer than the debounce window.
+    //
+    // This deliberately does *not* assert a single event. Whether thirty
+    // writes land inside one debounce window depends on how fast the
+    // machine is, and a CI runner is not fast — asserting "exactly one"
+    // asserts something about the hardware. What matters is the property
+    // the watcher exists for: the work is proportional to bursts, not to
+    // files, because each event costs a reload and a re-render.
+    let mut events = 0;
+    let mut reported = Vec::new();
+    while let Ok(changed) = watched.events.recv_timeout(Duration::from_secs(2)) {
+        events += 1;
+        reported.extend(changed.paths);
+        if reported.len() >= FILES {
+            break;
+        }
+    }
 
-    // And nothing else follows for a while: one burst, one reload, one
-    // re-render. A second event here would be a second full re-render.
+    assert_eq!(
+        reported.len(),
+        FILES,
+        "every file that changed should be reported once, got {reported:?}"
+    );
     assert!(
-        watched
-            .events
-            .recv_timeout(Duration::from_millis(1500))
-            .is_err(),
-        "the burst should have produced a single event"
+        events <= 5,
+        "thirty files should coalesce into a handful of reloads, not {events}"
     );
 }
 

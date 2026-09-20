@@ -194,3 +194,9 @@ Format:
 - What: `tauri::test::{mock_builder, mock_context, noop_assets}`, behind the `test` feature, build a real `App` with managed state and no window. That is enough to call a `register_uri_scheme_protocol` handler directly with a `tauri::http::Request` and assert on the `Response`.
 - Why it matters: it turns the `booker://` page-image path from something only a person clicking around could check into an ordinary test that runs on all three platforms in CI — including the answers that are not an image, such as a request for a revision that has moved on.
 - Where: `app/src-tauri/tests/page_images.rs`, `tauri = { features = ["test"] }` as a dev-dependency. Tauri 2.11.
+
+### A debounced-watcher test must assert the property, not the hardware
+- Learned: 2026-09-20, Wave 1 / track C
+- What: a test asserted that rewriting thirty files produces exactly one coalesced event. It passed on a laptop and failed on both Linux and macOS CI runners, because whether thirty writes finish inside the 250 ms debounce window depends on how fast the disk is. The runners split the burst into two events, which is correct behaviour.
+- Why it matters: the temptation on seeing it go red is to lengthen the debounce until CI agrees, which makes the application slower to answer for no reason. The assertion was wrong, not the window. What the watcher exists for is that the work is proportional to bursts rather than to files, so the test now drains the events and asserts every file is reported exactly once across at most a handful of them.
+- Where: `app/src-tauri/tests/watching.rs`. The same shape of mistake is waiting in any test that asserts a debounce boundary.

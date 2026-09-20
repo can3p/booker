@@ -154,7 +154,7 @@ She loved the [flowers]{#flowers} in her grandmother's garden.
 - `{#id .class key=value}` on headings, images, fenced divs (`:::`), and bracketed spans `[text]{…}`. Other editors show this as plain text, and GitHub still renders the file readably.
 - **HTML inserts:** we support a whitelisted subset (`span`, `div`, `br`, `sup`, `sub`, `u`, `class=`, and a limited `style=`). The subset maps to styles, so the PDF and HTML outputs match. Raw HTML outside the subset is kept only in the HTML output and produces a warning in PDF.
 - Escape hatches: ```` ```{=typst} ```` blocks for PDF only and ```` ```{=html} ```` blocks for HTML only.
-- Parser: `markdown-rs` or `pulldown-cmark` plus our attribute and directive pass. Decided with a spike in Wave 0 (source positions are required for click-to-source).
+- Parser: `pulldown-cmark` plus our attribute and directive pass. It is the one whose source positions exclude block markers and are never optional, which is what click-to-source needs (`docs/FINDINGS.md`).
 
 ### 5.4 `styles.toml`
 
@@ -309,10 +309,10 @@ Rules that keep this from turning into a second copy of the text:
 Key technical choices:
 - **Generate Typst source as text** (kept in memory and optionally dumped to `.booker/gen/`), rather than building Typst content objects directly. This is easy to debug, easy to test with snapshots, and gives an "eject to Typst" option. A span map links generated code to Markdown positions for click-to-source.
 - **Incremental preview:** Typst's memoized compiler, debounced to about 150 ms, and rendering only the visible pages. Target: under 100 ms from keystroke to preview for small edits in a 300-page novel.
-- **Anchor solver (`booker-place`):** pass 1 compiles and queries which page each anchor and each flow block lands on. Pass 2 places each float in the flow at the start of the target page (same, previous, next, or facing page). Repeat until nothing changes (at most N passes), then report "could not satisfy" in the problems panel and apply the best result found. This is the biggest technical risk, so it is spiked in Wave 0.
+- **Anchor solver (`booker-place`):** pass 1 compiles and queries which page each anchor and each flow block lands on. Pass 2 places each float in the flow at the start of the target page (same, previous, next, or facing page). Repeat until nothing changes (at most N passes), then report "could not satisfy" in the problems panel and apply the best result found. This is the biggest technical risk in the plan, and Wave 6 track A is where it is built and proved.
 - **Text wrapping around images:** `meander` (Typst package, vendored and pinned) for pages that have wrapped images. Otherwise, images float at the top or bottom, or sit between paragraphs.
 - **Composed pages** become a Typst page whose body is a stack of `place(dx:, dy:)` boxes — a direct, predictable mapping, and the part of the system we have the most control over.
-- **Frame chains are core, not an extra.** Text continues from frame to frame on its own, so the chain engine carries weight: `meander` (MIT, so we can vendor it and fork it if we must, ideally contributing fixes back) does exactly this today, and Typst's `measure` tells us whether content fits, which drives shrink-to-fit and the "nothing is left to hold this text" warning. Wave 0 spikes it and reports whether we lean on the package, fork it, or write our own chain layout. Same machinery serves flow mode, composed pages, margin notes and pull-out boxes, so it is worth doing properly once.
+- **Frame chains are core, not an extra.** Text continues from frame to frame on its own, so the chain engine carries weight: `meander` (MIT, so we can vendor it and fork it if we must, ideally contributing fixes back) does exactly this today, and Typst's `measure` tells us whether content fits, which drives shrink-to-fit and the "nothing is left to hold this text" warning. Wave 5 track B decides whether we lean on the package, fork it, or write our own chain layout. Same machinery serves flow mode, composed pages, margin notes and pull-out boxes, so it is worth doing properly once.
 - **Dragging must round-trip.** The preview knows each frame's identity, so a drag edits exactly the attribute or `layouts.toml` entry it came from, in millimetres rounded to one decimal, leaving the rest of the file untouched.
 - **Good typography without asking.** From Wave 2 the defaults are the ones a book should have anyway: justified text with hyphenation in the book's language, protection against single lines stranded at the top or bottom of a page, proper quotation marks and dashes for the language, ligatures and kerning on. Typst gives us all of these (its `costs` control for stranded and over-short lines, `hypher` hyphenation patterns, OpenType features), so the work is picking defaults per template, not building machinery. The knobs appear in Wave 3, the fine control in Wave 10; an amateur never has to touch any of it.
 - **Fonts:** a curated bundled set of open fonts (e.g. Literata, EB Garamond, Source Serif 4, Inter, Atkinson Hyperlegible, Andika for kids, Cinzel Decorative for initials), plus project fonts and system fonts. The problems panel warns when the project uses a system-only font and offers "copy into project".
@@ -323,7 +323,7 @@ Key technical choices:
 ## 7. Releases and updates (from day one)
 
 - CI: GitHub Actions matrix (macOS arm64 and x64 or universal, Windows x64 and arm64, Linux x64 AppImage/deb/rpm) using `tauri-action`.
-- Signing: macOS Developer ID plus notarization; Windows Authenticode (Azure Trusted Signing); updater artifacts signed with a minisign key kept in CI secrets. Both accounts are owned by you; Wave 0 sets them up. Unsigned builds work in the meantime, but Gatekeeper and SmartScreen will warn.
+- Signing: macOS Developer ID plus notarization; Windows Authenticode (Azure Trusted Signing); updater artifacts signed with a minisign key kept in CI secrets. Both accounts are owned by you; Wave 1 track A wires them in, and works without them until they exist. Unsigned builds work in the meantime, but Gatekeeper and SmartScreen will warn.
 - Identity: app ID `com.github.can3p.booker`, matching the repository, so no domain is needed. **This must be settled before the first public release**, because changing it later means installed copies stop receiving updates. Renaming the app is cheap; renaming the ID is not.
 - Update flow: check on start and every 24 h, plus "Check for updates…" in the menu. Download in the background, then "Restart to update"; never force-restart while a file is unsaved. Channels: `stable` and `beta` (the endpoint URL depends on the channel).
 - Hosting: `latest.json` / `beta.json` as GitHub Release assets (a static endpoint, no server). CrabNebula Cloud is an option later if we need download stats or staged rollouts.
@@ -664,9 +664,9 @@ Policy: MCP conformance is an ordinary integration test suite — cheap, determi
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Breaking changes in Typst (pre-1.0) | Codegen breaks on upgrade | Pin the version; all Typst code in `booker-typst`; golden tests act as the upgrade gate |
-| Anchor solver fails to converge | Images land on the wrong page | Spike in Wave 0; limit the number of passes; report the problem clearly; manual "pin to page" fallback |
+| Anchor solver fails to converge | Images land on the wrong page | Built in Wave 6 track A; limit the number of passes; report the problem clearly; manual "pin to page" fallback |
 | Text-wrap quality (`meander`) | Awkward layout | Use it only when asked; default to floats; upstream fixes |
-| Frame chains carry the whole layout model, and today they rest on one package | Text stops continuing between frames | `meander` is MIT, so we can vendor, fork and contribute back; Wave 0 spikes it and decides between package, fork and our own chain layout; the manual overrides (break here, shrink, stop) are the escape hatch in every case |
+| Frame chains carry the whole layout model, and today they rest on one package | Text stops continuing between frames | `meander` is MIT, so we can vendor, fork and contribute back; Wave 5 track B decides between package, fork and our own chain layout; the manual overrides (break here, shrink, stop) are the escape hatch in every case |
 | Colour management (CMYK, ICC, PDF/X) is missing in Typst | A print shop rejects the file | Colours carry their space in the model from Wave 3, so nothing has to be retrofitted; the actual conversion is a post-processing step behind one export hook (§10.2, Wave 10); most print-on-demand services accept RGB today |
 | Fine typography (baseline grid, optical margins) is not native | Books look slightly less refined than InDesign output | Typst already gives hyphenation, justification and stranded-line control, which is most of the visible quality; the rest is Wave 10 and does not block anything earlier |
 | An outside agent and the app edit the same file at the same moment | A change is lost | Eager autosave, atomic writes, echo suppression, and both versions offered rather than one discarded; Wave 7 stress-tests exactly this |
@@ -674,7 +674,7 @@ Policy: MCP conformance is an ordinary integration test suite — cheap, determi
 | Drag-and-drop editing fights hand-edited files | Users lose their formatting or their edits | Frames carry stable IDs; writes are targeted and keep comments; every drag is one undo step and one small diff |
 | PDF/X or CMYK needed by some printers | Print shop rejects the file | Most POD services (KDP, IngramSpark, Lulu) accept RGB PDF; verify Typst's roadmap; a post-processing step with Ghostscript as an optional external tool |
 | Linux WebKitGTK performance and quirks | Sluggish UI on Linux | Render the preview in Rust; test AppImage on 2 distros in CI |
-| Code-signing costs and setup | Scary install warnings | Set up in Wave 0; budget for an Apple Developer account and Azure Trusted Signing |
+| Code-signing costs and setup | Scary install warnings | Set up in Wave 1 track A; budget for an Apple Developer account and Azure Trusted Signing |
 | Markdown extensions look odd in other editors | User confusion | Keep attributes minimal; Pandoc-compatible syntax; the GUI never adds attributes that aren't needed |
 
 ## 13. Decisions
@@ -682,7 +682,7 @@ Policy: MCP conformance is an ordinary integration test suite — cheap, determi
 Settled (2026-09-19):
 
 1. **Repository** `github.com/can3p/booker`; app ID `com.github.can3p.booker` for now — no domain needed.
-2. **Signing accounts** (Apple Developer, Windows) are owned by you; set up during Wave 0.
+2. **Signing accounts** (Apple Developer, Windows) are owned by you; set up during Wave 1.
 3. **EPUB is in scope** — reflowable for flowing books, fixed-layout for composed ones (Wave 8).
 4. **License: MIT.** Typst is Apache-2.0 and stays a dependency, so the build ships a third-party notices file; bundled fonts keep their own licences (OFL and similar).
 5. **No git features inside the app for 1.0.** The format stays git-friendly and outside changes reload cleanly.
@@ -692,7 +692,7 @@ Still open: tracked in `docs/OPEN-QUESTIONS.md`, each with the default we procee
 
 ## 14. Parallel development with git worktrees
 
-Since you want to try this out, the waves are built for it, and Wave 0 is a good first run: it has seven tracks that barely touch each other.
+The waves are built for it: each one is cut into tracks that barely touch each other, so several can run at once.
 
 **Branches.** `main` ← `wave-N` (integration branch) ← `wN/<track>`. The wave's contracts (types, schemas, IPC) land on `wave-N` first and are frozen. Tracks branch off it, rebase on it daily, and merge back through a pull request with CI green. `main` only receives a wave merge at release time.
 
@@ -724,7 +724,7 @@ Keep worktrees in a sibling directory (`../booker-wt/`), not inside the repo, so
 
 The process rules themselves — branching, what counts as done, which document records what — live in `AGENTS.md`, so a fresh session follows them without being told.
 
-**Suggested measurement for the experiment:** after Wave 0, note how long integration took, how many conflicts appeared and where. If integration costs more than about a tenth of the wave, cut the number of parallel tracks rather than the contracts step.
+**Measure it every wave:** how long integration took, how many conflicts appeared and where, recorded in `docs/WAVE-LOG.md`. If integration costs more than about a tenth of the wave, cut the number of parallel tracks rather than the contracts step — and a wave small enough that setting up worktrees costs more than it saves runs in one session instead.
 
 ## Sources
 - [Typst 0.15 release notes](https://typst.app/blog/2026/typst-0.15/) · [Typst HTML export](https://typst.app/docs/reference/html/)

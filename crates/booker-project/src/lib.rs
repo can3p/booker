@@ -37,7 +37,7 @@ pub use content::Chapter;
 pub use edit::ConfigEditor;
 pub use migrate::{Migration, Migrations};
 pub use template::{Created, Template};
-pub use write::{write_atomic, write_if_changed, Written};
+pub use write::{is_write_temporary, write_atomic, write_if_changed, Written};
 
 /// A project folder, loaded.
 ///

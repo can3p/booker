@@ -213,3 +213,15 @@ Format:
 - What: the watcher deduplicates paths *within* one debounced burst. Rewriting thirty files on a Linux runner produced two bursts, and one chapter — written as the first burst closed and still settling as the second opened — appeared in both. A test comparing the reported paths as a list counted thirty-one.
 - Why it matters: reporting a file twice is harmless (a reload is idempotent) and losing one is not, so the assertion belongs on the set of paths, not the list. Deduplicating *across* bursts would need state with a lifetime and a way to expire it, which is real machinery bought for no gain.
 - Where: `app/src-tauri/tests/watching.rs`.
+
+### One write is several events, and the debouncer may split them across batches
+- Learned: 2026-09-20, Wave 1 / integration
+- What: `notify-debouncer-full` does not flush a burst as a unit. `debounced_events` expires **each event on its own clock** — an event is emitted once it is older than the timeout, and the queue for that path stops at the first event that is not — so one `std::fs::write`, which produces a create, a data change and a metadata change, can arrive as one batch on an idle machine and as two on a loaded one. Any echo suppression that consumes its record on the first sighting therefore reports the second batch as somebody else's edit. It passed a hundred local runs and failed once on a macOS CI runner.
+- Why it matters: it is a race whose outcome is the machine's load, so it reads as a flaky test rather than as a bug, and the tempting fix — a longer time window — cannot work: no window is both long enough for the slowest echo and short enough to let a real edit arriving just after a save through. Comparing the file's content with what we wrote (`AGENTS.md` §7) has no window at all and answers the same way however the events are grouped. `OwnWrites` in `app/src-tauri/src/watch.rs` does that now.
+- Where: `notify-debouncer-full` 0.7.0, `debounced_events` in its `src/lib.rs`; `app/src-tauri/src/watch.rs`.
+
+### An atomic write is a change to the folder it is written in
+- Learned: 2026-09-20, Wave 1 / integration
+- What: `write_atomic` creates `.booker-XXXXXX.tmp` **next to its target**, inside the watched project, and renames it away. The watcher saw that path, could not recognise it as ours — the name we recorded is the chapter's, not the temporary file's — and reported every save as an outside change. The integration test missed it for a wave because it wrote its chapters with `std::fs::write` instead of through the project's own writer, so the half of a save that is hardest to watch was never exercised.
+- Why it matters: it defeated echo suppression entirely while every test about echo suppression passed. Two lessons: the temporary file's name belongs to whoever creates it (`booker_project::is_write_temporary`, so the two places cannot drift), and a test about what the watcher does with our writes must perform a real one.
+- Where: `crates/booker-project/src/write.rs`, `app/src-tauri/src/watch.rs`, `app/src-tauri/tests/watching.rs`.

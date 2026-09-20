@@ -5,7 +5,9 @@ Read `AGENTS.md` first: it has the branching rules, the definition of done, and 
 ## Toolchain
 
 - **Rust** stable, pinned by `rust-toolchain.toml`. Install with [rustup](https://rustup.rs). If `cargo` is not found, add it to the shell: `. "$HOME/.cargo/env"`.
-- **Node 20+** and **pnpm** for the application UI, from Wave 1 track B onwards. There is no `package.json` yet, so nothing in the repository needs them today.
+- **Node**, pinned by `.tool-versions` — 20.19 or newer, because Vite 8 refuses anything older. With [asdf](https://asdf-vm.com) the repository selects it for you; otherwise install that version yourself.
+- **pnpm**, which comes with Node through corepack: `corepack enable pnpm`. If that fails to verify a signature, the corepack that shipped with your Node is too old — `npm install -g corepack@latest` fixes it.
+- **The Linux desktop libraries**, if you build the application on Linux: `libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `libxdo-dev` and `patchelf`. macOS and Windows carry their webview with the operating system. CI installs the same list from `.github/actions/tauri-system-deps`.
 
 ## Everyday commands
 
@@ -18,7 +20,19 @@ cargo test -p booker-core export_bindings   # regenerate TypeScript types from t
 cargo xtask --help                          # development tasks (golden snapshots, evals)
 ```
 
-TypeScript bindings in `app/src/lib/bindings/` are generated, not edited, and are not committed.
+And in `app/`, for the application:
+
+```bash
+pnpm install                                # once, and after any change to package.json
+pnpm tauri dev                              # build and open the window, reloading as you edit
+pnpm check                                  # typecheck the Svelte and TypeScript
+pnpm test                                   # the frontend tests
+pnpm build                                  # the production frontend bundle, into app/dist/
+```
+
+TypeScript bindings in `app/src/lib/bindings/` are generated, not edited, and are not
+committed — so **run `cargo test -p booker-core export_bindings` before `pnpm check`** in a
+fresh clone, or the typecheck fails on imports that do not exist yet.
 
 ## What CI checks, and how to run each check yourself
 
@@ -32,6 +46,10 @@ TypeScript bindings in `app/src/lib/bindings/` are generated, not edited, and ar
 | `docs` | `cargo doc` builds with no broken intra-doc links | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked` |
 | `bindings` | The contracts still export TypeScript | `cargo test -p booker-core --locked export_bindings` |
 | `deps` | The workspace manifests parse, and the dependency tree is acceptable | `cargo metadata --locked --format-version 1 > /dev/null` then `cargo deny check bans licenses sources advisories` |
+
+The Rust jobs that compile the whole workspace — `clippy`, `test` and `docs` — install the
+Linux desktop libraries first, because `app/src-tauri` is a workspace member from Wave 1 on.
+That is `.github/actions/tauri-system-deps`, in one place rather than pasted into three jobs.
 
 `--locked` everywhere: a change that edits a dependency without committing `Cargo.lock` fails rather than quietly resolving something else. `cargo test --all-targets` does not run doc tests, which is why the `test` job runs two commands.
 

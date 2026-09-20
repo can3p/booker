@@ -3,5 +3,8 @@
 .booker/
 node_modules/
 app/src/lib/bindings/
+app/dist/
+# Tauri generates its schemas and platform glue on every build.
+app/src-tauri/gen/
 *.pdf
 .DS_Store

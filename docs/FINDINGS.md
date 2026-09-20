@@ -164,3 +164,21 @@ Format:
 - What: `main` is protected by a repository **ruleset** named "protect main" — no deletion, no force-push, pull request required with zero approvals. `gh api repos/can3p/booker/branches/main/protection` answers `Branch not protected` (HTTP 404) anyway, because that endpoint only knows the older branch-protection settings. The query that shows the truth is `gh api repos/can3p/booker/rules/branches/main`, or `gh api repos/can3p/booker/rulesets` for the list.
 - Why it matters: a session checking whether `AGENTS.md` §3 is enforced will reach for the `protection` endpoint, get a 404, and conclude that nothing guards `main`. It also means a merge from an agent session needs a pull request to exist — a direct push is refused by the server, not just by `.githooks/pre-push`.
 - Where: `gh api repos/can3p/booker/rules/branches/main`. The ruleset carries no required status checks yet (Q-11).
+
+### Vite 8 needs Node 20.19, and pnpm can install rolldown without its native binding
+- Learned: 2026-09-20, Wave 1 / contracts step
+- What: two traps, one after the other, setting up the application's toolchain. Vite 8 refuses Node below 20.19 with a warning rather than an error, so a build appears to work and then behaves oddly. And the first `pnpm install` resolved `rolldown` — Vite 8's bundler — without any of its per-platform native bindings, so `svelte-check` died with `Cannot find native binding` inside `svelte.config.js`. `pnpm install --force` installed them and it has not recurred.
+- Why it matters: both failures point at the wrong thing. The Vite warning scrolls past in a long build log, and the rolldown error names npm's optional-dependency bug in a repository that does not use npm. The Node version is now pinned in `.tool-versions` and stated in `package.json`'s `engines`; if the binding failure comes back in CI, the fix is `--force`, not a different package manager.
+- Where: `.tool-versions`, `app/package.json`, `CONTRIBUTING.md`. Vite 8.3.0, rolldown 1.2.9, pnpm 12.5.1.
+
+### Tauri brings MPL-2.0 and ISC into the tree, and both are fine
+- Learned: 2026-09-20, Wave 1 / contracts step
+- What: adding `app/src-tauri` to the workspace made `cargo deny` fail on eight crates under two licences not previously in the tree. ISC (`ring`, `rustls-webpki`, `untrusted`) is permissive, in the MIT family. MPL-2.0 (`cssparser`, `cssparser-macros`, `dtoa-short`, `selectors` under Tauri's HTML handling, and `option-ext` under `dirs`) is *file*-level weak copyleft: the obligation attaches to those files, not to an application that links them, so it does not reach Booker's MIT source.
+- Why it matters: the reflex on a copyleft licence is to look for a replacement, and here there is nothing to fix — unmodified crates from crates.io need attribution and a pointer upstream, which `THIRD-PARTY.md` provides. The one thing that would change the answer is forking one of them: modified MPL files stay MPL and must be published, so vendoring any of these five is a deliberate decision rather than a convenience.
+- Where: `deny.toml`, with the reasoning next to the allow entries. Tauri 2.11.
+
+### An icon can be generated without an image editor
+- Learned: 2026-09-20, Wave 1 / contracts step
+- What: `pnpm tauri icon <source.png>` produces every size and format a bundle needs — `.icns`, `.ico`, the Windows Store logos — from one 1024×1024 PNG. It also writes Android and iOS icon sets, which Booker has no use for and which were deleted. The source PNG itself was written by a short Python script using `zlib` and `struct`, no image library.
+- Why it matters: it unblocks a bundle build before anyone has designed a logo, and it means the placeholder is reproducible rather than a binary somebody drew once. Track D replaces the artwork; the command stays the same.
+- Where: `app/src-tauri/icons/`, `@tauri-apps/cli` 2.11.5.

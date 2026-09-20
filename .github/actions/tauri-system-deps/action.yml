@@ -1,0 +1,22 @@
+# Tauri's Linux build needs a webview and a tray, which the GitHub runners do
+# not have installed. Every Rust job that compiles the workspace needs this
+# from Wave 1 on, because `app/src-tauri` is a workspace member — so it lives
+# in one place rather than being pasted into three jobs.
+#
+# macOS and Windows carry their webview with the operating system and need
+# nothing, which is why the caller guards this with `runner.os == 'Linux'`.
+name: Tauri system dependencies
+description: Install the Linux libraries Tauri 2 links against.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --no-install-recommends -y \
+          libwebkit2gtk-4.1-dev \
+          libappindicator3-dev \
+          librsvg2-dev \
+          libxdo-dev \
+          patchelf

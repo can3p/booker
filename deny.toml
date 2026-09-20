@@ -56,6 +56,26 @@ allow = [
     "CC0-1.0",
     "BSL-1.0",
     "Unicode-3.0",
+    # Added in Wave 1 with Tauri.
+    #
+    # ISC is a permissive licence in the MIT family, no different in
+    # substance from the ones above: `ring`, `rustls-webpki` and `untrusted`,
+    # all of them under the TLS the updater uses to fetch a release.
+    "ISC",
+    # MPL-2.0 is weak copyleft, and it is *file*-level: the obligation
+    # attaches to the MPL-licensed files themselves, not to an application
+    # that links them, so it does not reach Booker's own MIT source. We take
+    # these crates unmodified from crates.io, which leaves attribution and
+    # pointing at the upstream source — exactly what THIRD-PARTY.md is for.
+    # If we ever fork one of them, the modified files stay MPL and must be
+    # published, so a vendored copy of any of these is a decision to take
+    # deliberately.
+    #
+    # They arrive through Tauri: `cssparser`, `cssparser-macros`,
+    # `dtoa-short` and `selectors` under its HTML handling, and `option-ext`
+    # under `dirs`, which finds the per-user folders an installed
+    # application writes to.
+    "MPL-2.0",
 ]
 confidence-threshold = 0.9
 

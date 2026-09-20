@@ -358,7 +358,7 @@ Everything here is independent of everything in Wave 0 except the contracts, whi
 |---|---|---|
 | A. Release pipeline | A release workflow beside Wave 0.5's `ci.yml`: `tauri-action` bundles for all three platforms, signing hooks, updater artifacts, `latest.json` on GitHub Releases, a beta channel | M (YAML: S) |
 | B. Application shell | Tauri 2 + Svelte 5 + TypeScript: window layout (chapter sidebar, editor pane, preview, status bar, problems panel), open-folder, recent projects, "Check for updates…" | M |
-| C. Preview | Page images from the engine over the `booker://` protocol, visible-page rendering, zoom, scroll — the app's first real use of the Wave 0 core | M |
+| C. Preview | Page images from the engine over the `booker://` protocol, visible-page rendering, zoom, scroll — the app's first real use of the Wave 0 core. Includes the **minimal watcher**: one coalesced reload per burst of outside edits, so a file changed in another editor reaches the preview | M |
 | D. Hygiene | Third-party notices (Typst Apache-2.0, bundled font licences) assembled from the `cargo deny` licence data Wave 0.5 set up, icons, the frontend `pnpm lint` and `pnpm test` jobs added to the existing CI workflow | S |
 | D2. Tutorial | `docs/tutorials/02-the-app.md`: the same book made from the window instead of the terminal — open a folder, read the preview, export, update | S |
 
@@ -373,7 +373,7 @@ Exit criteria: installers built by CI for all three platforms; **a previous rele
 | B. Codegen | AST → Typst: chapters, `chapter.start`, TOC, page setup presets, margins, base font, **typographic defaults** (justification, hyphenation by language, stranded-line protection, smart quotes and dashes, ligatures) | L |
 | C. Editor | CodeMirror 6: Markdown live-styling (syntax hidden like Obsidian), chapter tree (add/rename/reorder → `book.toml`), autosave | M |
 | D. Preview | Incremental compile loop, visible-page rendering, zoom, click-to-source and cursor-to-page sync | M |
-| E. Project I/O | Watcher, reload with conflict handling, `toml_edit` writer, `.gitignore`/`.gitattributes` generation | M |
+| E. Project I/O | Conflict handling on top of Wave 1's watcher (an outside edit meeting an unsaved buffer offers both versions), `toml_edit` writer, `.gitignore`/`.gitattributes` generation | M |
 | F. Templates & fonts | 4 starter templates (novel, picture book, poetry, short paper), bundled font set + licenses | S (content) / M (wiring) |
 | G. Tests & CLI | Golden tests: fixture projects → PNG snapshots with pixel diff; `booker build`, and the first `booker check` rules (missing files, unresolved references) | S (fixtures) / M (harness) |
 
@@ -436,7 +436,7 @@ Exit criteria: a 24-page picture book can be laid out end to end without touchin
 | B. Rules backfill | The rules for everything Waves 1–5 shipped: references, layout, style, text, images (one rule per ticket) | M (rules: S) |
 | C. CLI | `check` (human / JSON / SARIF, exit codes), `render --page`, `where`, `page`, `fmt`, `fix --safe` | M |
 | D. MCP server | `booker mcp` over stdio, tools mirroring the CLI, confined to the project folder, read-mostly | M |
-| E. Resilience | Hardening against outside edits: coalesced bulk reload, atomic writes, echo suppression, revision counter, partial load of broken projects | L |
+| E. Resilience | Hardening against outside edits: atomic writes, echo suppression, revision counter, partial load of broken projects, and the stress tests that prove Wave 1's watcher and Wave 2's conflict handling survive thirty files rewritten at once | L |
 | F. Discoverability | JSON Schemas generated from the parsing structs, `booker capabilities --json`, `booker explain <topic\|rule>`, `booker recipe list/show`, "did you mean" suggestions on unknown keys | M (recipes: S) |
 | G. Agent onboarding | `AGENTS.md` and a Booker skill generated into new book projects from the capability manifest, `booker explain format` | S |
 | H. MCP conformance | Real-client tests over stdio: handshake, tools matching the capability manifest, schema validity, CLI/MCP parity, refusals, cancellation, deterministic output, on all three platforms | M |

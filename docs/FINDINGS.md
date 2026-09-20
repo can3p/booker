@@ -182,3 +182,15 @@ Format:
 - What: `pnpm tauri icon <source.png>` produces every size and format a bundle needs — `.icns`, `.ico`, the Windows Store logos — from one 1024×1024 PNG. It also writes Android and iOS icon sets, which Booker has no use for and which were deleted. The source PNG itself was written by a short Python script using `zlib` and `struct`, no image library.
 - Why it matters: it unblocks a bundle build before anyone has designed a logo, and it means the placeholder is reproducible rather than a binary somebody drew once. Track D replaces the artwork; the command stays the same.
 - Where: `app/src-tauri/icons/`, `@tauri-apps/cli` 2.11.5.
+
+### One write produces several filesystem events, which breaks naive echo suppression
+- Learned: 2026-09-20, Wave 1 / track C
+- What: saving a chapter emits more than one debounced event for the same path — the file is created, its contents change, its metadata changes. The watcher recognised its own write by looking the path up in a table and removing it, so the *first* event was correctly identified as an echo and every later one looked like an outside edit. The application then reloaded and re-rendered every time the user stopped typing. The fix is ordering: deduplicate the paths in a burst first, then ask once per path whether it is an echo.
+- Why it matters: the symptom is not an error but a preview that flickers and an editor that fights the person using it, and it only appears with a real filesystem — no unit test of the decision logic can produce it. `app/src-tauri/tests/watching.rs` is what caught it, by writing a file the way a save does and asserting silence.
+- Where: `app/src-tauri/src/watch.rs`, `paths_worth_reporting`. notify 8, notify-debouncer-full 0.7, macOS.
+
+### `tauri::test` builds an application without a window
+- Learned: 2026-09-20, Wave 1 / track C
+- What: `tauri::test::{mock_builder, mock_context, noop_assets}`, behind the `test` feature, build a real `App` with managed state and no window. That is enough to call a `register_uri_scheme_protocol` handler directly with a `tauri::http::Request` and assert on the `Response`.
+- Why it matters: it turns the `booker://` page-image path from something only a person clicking around could check into an ordinary test that runs on all three platforms in CI — including the answers that are not an image, such as a request for a revision that has moved on.
+- Where: `app/src-tauri/tests/page_images.rs`, `tauri = { features = ["test"] }` as a dev-dependency. Tauri 2.11.

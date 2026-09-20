@@ -159,7 +159,9 @@ export class Book {
   async reloadFromDisk(): Promise<void> {
     if (!this.info) return;
     try {
-      const current = await ipc.projectInfo();
+      // Ask the core to read the folder again — `projectInfo` would hand
+      // back what it already had, which is exactly what is now out of date.
+      const current = await ipc.reloadProject();
       if (!current) return;
       this.info = current;
       // Keep the chapter open if it still exists; otherwise let go of it.

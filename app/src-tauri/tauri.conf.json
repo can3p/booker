@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' booker: asset: data:; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; img-src 'self' booker: http://booker.localhost asset: data:; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {

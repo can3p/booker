@@ -83,10 +83,11 @@ pnpm install
 pnpm tauri dev
 ```
 
-The window opens a book folder, lists its chapters, edits them, shows what is wrong with the
-book, and exports a PDF — through the same core `booker build` uses, so the two cannot
-disagree about a book. The editor is a plain text pane and the preview lists pages rather
-than drawing them; live Markdown styling arrives in Wave 2, page images later in this wave.
+The window opens a book folder, lists its chapters, edits them, draws the pages as you type,
+shows what is wrong with the book, and exports a PDF — through the same core `booker build`
+uses, so the two cannot disagree about a book. An edit made in another editor, or by an
+agent rewriting the whole book, is picked up and re-rendered without touching the window.
+The editor is a plain text pane for now; live Markdown styling arrives in Wave 2.
 
 ## What a book looks like on disk
 

@@ -95,7 +95,7 @@ Format:
 
   Branch protection is on, as a repository **ruleset** named "protect main" rather than the older branch-protection settings — which is why `gh api repos/can3p/booker/branches/main/protection` answers "Branch not protected" and `gh api repos/can3p/booker/rules/branches/main` is the query that shows it. It forbids deletion and force-pushes and requires a pull request (zero approvals), so `AGENTS.md` §3 is now enforced rather than merely asked for, and `.githooks/pre-push` is the early warning rather than the only one.
 
-  **One gap is left, and it is the owner's settings page:** the ruleset has no required status checks, so a red pull request can still be merged. Adding `fmt`, `clippy`, `test (ubuntu-latest)`, `docs`, `bindings` and `deps` to it is what makes CI a gate. Tracked as Q-11 rather than left inside an answered question.
+  The one gap left when this was answered — the ruleset listed no required status checks, so a red pull request could still be merged — was tracked separately as Q-11, and closed on 2026-09-21.
 
 ### Q-11 — Should the "protect main" ruleset require the CI checks to pass?
 - Raised: 2026-09-20, wave 1 ramp-up
@@ -103,7 +103,11 @@ Format:
 - Context: the ruleset that closed Q-10 requires a pull request but lists no required status checks, so nothing stops a red one from being merged. The six job names are stable and have been green on every pull request since Wave 0.5.
 - Options: add all six as required checks; or require only `fmt`, `clippy` and `test (ubuntu-latest)` and let the cheaper jobs advise; or leave CI advisory.
 - Default we are proceeding with: ask before the Wave 1 merge, and treat a red check as blocking by convention until then.
-- Status: Open
+- Status: **Answered 2026-09-21.** The six checks the question named are required: `fmt`, `clippy`, `test (ubuntu-latest)`, `docs`, `bindings` and `deps`. CI is a gate rather than advice, and a red pull request into `main` cannot be merged.
+
+  Two things were settled alongside it. The ruleset also requires a **linear history**, and `rebase` is now the only merge method it allows — so a wave arrives on `main` as its own commits, and `AGENTS.md` §3 says so. Both are in `docs/PLAN.md` §13.
+
+  What the gate deliberately does not cover: `test (macos-latest)`, `test (windows-latest)` and `app` run on every pull request and are read, but are not required, so a platform-specific failure does not block a merge on its own. This wave had one — a race in the watcher that only a loaded macOS runner reproduced (`docs/FINDINGS.md`) — so it is worth knowing that the gate would not have caught it. Nor is "branches must be up to date before merging" switched on, so a green run against a base that has since moved still counts.
 
 ### Q-12 — How does somebody choose the beta channel?
 - Raised: 2026-09-20, wave 1 / track A

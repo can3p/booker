@@ -5,8 +5,9 @@
 #
 #     git config core.hooksPath .githooks
 #
-# Branch protection on GitHub is the real gate and only the repository owner
-# can turn it on (docs/OPEN-QUESTIONS.md, Q-10).
+# The "protect main" ruleset on GitHub is the real gate: it refuses the push
+# outright and requires a green, rebased pull request (AGENTS.md §3). This
+# hook only saves you the round trip.
 
 while read -r _local_ref _local_sha remote_ref _remote_sha; do
     case "$remote_ref" in

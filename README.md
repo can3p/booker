@@ -6,7 +6,7 @@ Book authoring for people who want a good-looking book without learning typesett
 
 A Booker project is a plain folder: Markdown for the text, a few readable TOML files for how it should look. It lives in git, opens in any editor, and builds into a print-ready PDF. The layout engine is [Typst](https://typst.app), embedded in the application, so a 200-page novel lays out in about half a second.
 
-**Status: early.** The core works end to end on the command line — a folder of Markdown becomes a PDF — and the desktop application opens a book, edits it and exports a PDF, but is built from source rather than installed: the installers and the updater are the rest of the wave in progress. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
+**Status: early, but installable.** A folder of Markdown becomes a printable PDF, from the command line or from the application window, and Booker updates itself. What it cannot do yet is most of what makes a book look like a book: fonts, headings, images, page rules and templates all come later. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
 
 ## Start here
 
@@ -75,7 +75,16 @@ booker build ~/books/my-book
 
 ### The application
 
-There is no installer yet, so the window is run from a source checkout. You need
+Download an installer from [the releases page](https://github.com/can3p/booker/releases) —
+`.dmg` for macOS, `.exe` for Windows, `.AppImage`, `.deb` or `.rpm` for Linux — and
+[The Booker window](docs/tutorials/02-the-app.md) walks through the rest.
+
+The builds are not signed by Apple or Microsoft yet, so the first launch warns: on macOS
+right-click the application and choose Open, on Windows choose More info → Run anyway.
+Updates are signed with our own key and refused if the signature does not match, which is a
+separate thing from the install warning.
+
+To run it from a source checkout instead, you need
 [Node 20.19 or newer and pnpm](CONTRIBUTING.md#toolchain) as well as Rust, and on Linux the
 desktop libraries listed there.
 

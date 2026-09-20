@@ -147,8 +147,15 @@ jobs:
         with:
           # One place says which Node this is built with.
           node-version-file: .tool-versions
+      # The corepack that ships with Node 20 cannot verify the registry
+      # signature on a current pnpm, and fails in a way that looks like a
+      # broken install rather than a signature problem: it reports
+      # `Cannot find module …/pnpm.cjs`. Updating it first is what
+      # CONTRIBUTING.md tells a person to do, so CI does the same.
       - name: Enable pnpm
-        run: corepack enable pnpm
+        run: |
+          npm install -g corepack@latest
+          corepack enable pnpm
       - uses: Swatinem/rust-cache@v2
       # The TypeScript types are generated from the Rust contracts and are
       # not committed, so nothing below typechecks without this first.

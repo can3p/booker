@@ -349,20 +349,10 @@ The core (engine, project format, `booker new` and `booker build`), continuous i
 
 Two decisions made in those waves that still constrain everything below: the Typst engine is kept alive per open project, because the incremental recompile is what makes a live preview possible at all (`docs/FINDINGS.md`), and nothing in CI runs on a schedule — every check runs on push and pull request, with the three-platform test matrix widening only on pull requests into `main`.
 
-### Wave 1: The application and how it reaches people
-**Demo:** download Booker, install it on macOS, Windows or Linux, open a folder, see the book's pages, export a PDF. Then publish the next version and watch the installed one update itself.
+### Wave 1 ✅ done
+The desktop application and the release pipeline: a window that opens a book folder, edits it, draws its pages and exports a PDF, and installers for macOS, Windows and Linux that update themselves. What it shipped, what it deviated from and what it cost is in [`docs/WAVE-LOG.md`](WAVE-LOG.md); its brief remains in `docs/waves/wave-1.md`.
 
-Everything here is independent of everything in Wave 0 except the contracts, which is why it is its own wave.
-
-| Track | Work | Tier |
-|---|---|---|
-| A. Release pipeline | A release workflow beside Wave 0.5's `ci.yml`: `tauri-action` bundles for all three platforms, signing hooks, updater artifacts, `latest.json` on GitHub Releases, a beta channel | M (YAML: S) |
-| B. Application shell | Tauri 2 + Svelte 5 + TypeScript: window layout (chapter sidebar, editor pane, preview, status bar, problems panel), open-folder, recent projects, "Check for updates…" | M |
-| C. Preview | Page images from the engine over the `booker://` protocol, visible-page rendering, zoom, scroll — the app's first real use of the Wave 0 core. Includes the **minimal watcher**: one coalesced reload per burst of outside edits, so a file changed in another editor reaches the preview | M |
-| D. Hygiene | Third-party notices (Typst Apache-2.0, bundled font licences) assembled from the `cargo deny` licence data Wave 0.5 set up, icons, the frontend `pnpm lint` and `pnpm test` jobs added to the existing CI workflow | S |
-| D2. Tutorial | `docs/tutorials/02-the-app.md`: the same book made from the window instead of the terminal — open a folder, read the preview, export, update | S |
-
-Exit criteria: installers built by CI for all three platforms; **a previous release updates itself to the new one**; the app opens a project and shows its pages.
+Three decisions taken there that constrain what follows: there is exactly one translation from a book to pages (`booker_typst::book`, behind `Engine::set_book`) and both the window and the CLI go through it; the application keeps one engine per open project, because the memoized compiler is what makes the preview incremental; and an outside change to the folder is a reload, never a merge, because everything the window holds is derived from files that something else may have rewritten.
 
 ### Wave 2: "Write a simple book" (MVP)
 **Demo:** create a novel from a template, write chapters (or edit them in VS Code and watch the preview follow), get a table of contents, and export a good-looking PDF.

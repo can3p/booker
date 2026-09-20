@@ -1,0 +1,7 @@
+# `cargo xtask …` runs the development tasks in `xtask/`.
+#
+# The alias is what makes the command in CONTRIBUTING.md real: without it,
+# `cargo xtask third-party` answers "no such command" and the only way to
+# run a task is `cargo run -p xtask --`, which nobody would guess.
+[alias]
+xtask = "run --quiet --package xtask --"

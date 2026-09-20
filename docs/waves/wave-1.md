@@ -101,11 +101,18 @@ Third-party notices (Typst is Apache-2.0; the bundled font licences are in `crat
 
 ## Exit criteria
 
-- Installers for macOS, Windows and Linux, produced by CI.
-- **A `v0.2.0` installation updates itself to `v0.2.1`.**
-- The app opens a project, shows its pages, exports a PDF.
-- The application can be learned from `docs/tutorials/` (`AGENTS.md` §4 criterion 3).
-- `docs/WAVE-LOG.md` entry written; the documents in `AGENTS.md` §2 accurate.
+- ✅ Installers for macOS, Windows and Linux, produced by CI — `.github/workflows/release.yml`, on a tag.
+- ⬜ **A `v0.2.0` installation updates itself to `v0.2.1`.** The last thing the wave does, and the one check that is never skipped. It needs two real releases and a person to install one, so it happens at integration, not in a track.
+- ✅ The app opens a project, shows its pages, exports a PDF.
+- ✅ The application can be learned from `docs/tutorials/02-the-app.md` (`AGENTS.md` §4 criterion 3). Its prose still needs the by-hand walk-through before the wave closes — the test builds the files it tells a reader to create, but cannot read a sentence about where a menu item is.
+- ✅ `docs/WAVE-LOG.md` entry written; the documents in `AGENTS.md` §2 accurate.
+
+## What remains, in order
+
+1. Merge the wave pull request's prerequisites and get CI green on all three platforms.
+2. Tag `v0.2.0`. The workflow builds four targets and leaves a **draft** release.
+3. Install it. Tag a trivial `v0.2.1`, publish that draft, and confirm the installed `v0.2.0` offers and installs it. Write the result into the wave log's "Update check" line — the line is written when it is true, not before.
+4. Publish `v0.2.0`, merge into `main`.
 
 ## Not in this wave
 

@@ -104,3 +104,11 @@ Format:
 - Options: add all six as required checks; or require only `fmt`, `clippy` and `test (ubuntu-latest)` and let the cheaper jobs advise; or leave CI advisory.
 - Default we are proceeding with: ask before the Wave 1 merge, and treat a red check as blocking by convention until then.
 - Status: Open
+
+### Q-12 — How does somebody choose the beta channel?
+- Raised: 2026-09-20, wave 1 / track A
+- Needed by: the first beta anyone is meant to install — not before
+- Context: a beta tag builds the same installers and marks its GitHub release as a prerelease, so it is not what `releases/latest` points at and no installed copy is ever offered it. That much works today, and a beta can be installed by hand from its release page. What does not exist is a way to *stay* on the beta channel: that needs a second manifest at a fixed URL (`beta.json`) and a setting in the application that points the updater at it.
+- Options: build it now; build it when somebody asks for a beta; or decide that betas are always installed by hand and drop the channel idea.
+- Default we are proceeding with: wait. The machinery is a day's work whenever it is wanted, and building a channel nobody has used yet means guessing at how people will want to move between them — including the awkward part, which is going back to stable from a beta whose version number is higher.
+- Status: Open

@@ -70,14 +70,16 @@ fn new(
     let template = Template::from_name(template)?;
     let (created, project) = Project::create(path, template, title)?;
 
+    // `display_path`, not `Path::display`: these are project-relative paths,
+    // and they must read the same on every platform (`docs/FINDINGS.md`).
     writeln!(
         out,
         "Created a `{}` book in {}",
         template.name(),
-        created.root.display()
+        display_path(&created.root)
     )?;
     for file in &created.files {
-        writeln!(out, "  {}", file.display())?;
+        writeln!(out, "  {}", display_path(file))?;
     }
     writeln!(out)?;
     writeln!(out, "  {} — the book's settings", booker_project::BOOK_TOML)?;
@@ -88,7 +90,7 @@ fn new(
     )?;
     writeln!(out)?;
     writeln!(out, "Next:")?;
-    writeln!(out, "  booker build {}", path.display())?;
+    writeln!(out, "  booker build {}", display_path(path))?;
 
     // A starter project that is born with problems would be a bug in the
     // template, so say so loudly rather than quietly shipping it.

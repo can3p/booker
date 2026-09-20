@@ -30,6 +30,17 @@ fn new_then_build_works_on_a_fresh_folder() {
     assert_eq!(code, OK, "{output}");
     assert!(output.contains("Created a `novel` book"), "{output}");
 
+    // The files `new` lists are project-relative, so they must read the same
+    // on every platform. Windows printed `content\01-the-first-chapter.md`
+    // here while `build`, three lines of output later, printed the same file
+    // with a forward slash — a disagreement no reader can make sense of, and
+    // one an agent comparing output across platforms cannot either
+    // (`docs/FINDINGS.md`, and `display_path`).
+    assert!(
+        output.contains("  content/01-the-first-chapter.md"),
+        "`new` lists what it wrote with forward slashes: {output}"
+    );
+
     // Everything a book needs is there, and the title came from the folder.
     for file in [
         "book.toml",

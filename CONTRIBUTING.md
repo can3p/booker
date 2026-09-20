@@ -5,7 +5,7 @@ Read `AGENTS.md` first: it has the branching rules, the definition of done, and 
 ## Toolchain
 
 - **Rust** stable, pinned by `rust-toolchain.toml`. Install with [rustup](https://rustup.rs). If `cargo` is not found, add it to the shell: `. "$HOME/.cargo/env"`.
-- **Node 20+** and **pnpm** for the application UI (from Wave 0 track B onwards).
+- **Node 20+** and **pnpm** for the application UI, from Wave 1 track B onwards. There is no `package.json` yet, so nothing in the repository needs them today.
 
 ## Everyday commands
 

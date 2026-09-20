@@ -6,7 +6,12 @@ Read `AGENTS.md` first: it has the branching rules, the definition of done, and 
 
 - **Rust** stable, pinned by `rust-toolchain.toml`. Install with [rustup](https://rustup.rs). If `cargo` is not found, add it to the shell: `. "$HOME/.cargo/env"`.
 - **Node**, pinned by `.tool-versions` — 20.19 or newer, because Vite 8 refuses anything older. With [asdf](https://asdf-vm.com) the repository selects it for you; otherwise install that version yourself.
-- **pnpm**, which comes with Node through corepack: `corepack enable pnpm`. If that fails to verify a signature, the corepack that shipped with your Node is too old — `npm install -g corepack@latest` fixes it.
+- **pnpm**, which comes with Node through corepack. Update corepack first, because the one Node 20 ships with cannot fetch a current pnpm:
+  ```bash
+  npm install -g corepack@latest
+  corepack enable pnpm
+  ```
+  Skipping the first line fails in one of two ways, neither of which mentions corepack's age: `Cannot find matching keyid` when it cannot verify the download, or `Cannot find module …/pnpm.cjs` when it half-installed one. CI does the same two commands.
 - **The Linux desktop libraries**, if you build the application on Linux: `libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `libxdo-dev` and `patchelf`. macOS and Windows carry their webview with the operating system. CI installs the same list from `.github/actions/tauri-system-deps`.
 
 ## Everyday commands

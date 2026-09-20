@@ -69,6 +69,7 @@ fn check(tutorial: &Path) -> usize {
     };
 
     let mut commands_run = 0;
+    let mut files_written = 0;
     for fence in fences(&text) {
         let (language, attributes) = fence.info();
         if let Some(path) = attributes
@@ -76,6 +77,7 @@ fn check(tutorial: &Path) -> usize {
             .find_map(|attribute| attribute.strip_prefix("file="))
         {
             shell.write_file(path, &fence);
+            files_written += 1;
             continue;
         }
         if language != "console" || attributes.contains(&"ignore") {
@@ -86,14 +88,26 @@ fn check(tutorial: &Path) -> usize {
 
     // A numbered tutorial that checks nothing is the failure this whole file
     // exists to prevent, and it would otherwise pass silently.
+    //
+    // There are two ways to be checked, because there are two kinds of
+    // tutorial. One walks the reader through commands, and every command is
+    // run and its output compared. The other walks them through the window,
+    // where there is nothing to type — but it still tells them to create
+    // files, and those files must make a book that actually opens. So a
+    // tutorial with no commands is held to that instead: whatever it told
+    // the reader to write is loaded and built.
     let numbered = tutorial
         .file_name()
         .and_then(|file| file.to_str())
         .is_some_and(|file| file.starts_with(|c: char| c.is_ascii_digit()));
-    assert!(
-        !numbered || commands_run > 0,
-        "{name} has no runnable ```console block — every command a reader types must be checked"
-    );
+    if numbered && commands_run == 0 {
+        assert!(
+            files_written > 0,
+            "{name} neither runs a command nor writes a file, so nothing in it is checked. \
+             A tutorial nobody verifies is one that rots quietly."
+        );
+        shell.build_what_the_reader_typed();
+    }
 
     commands_run
 }
@@ -116,6 +130,41 @@ struct Shell {
 }
 
 impl Shell {
+    /// Build the book the reader was told to type, and insist it works.
+    ///
+    /// This is how a tutorial about the *window* is checked: it has no
+    /// commands in it, but the files it tells somebody to create must make
+    /// a book that opens and lays out. A `book.toml` with a typo in it, or
+    /// a chapter in a folder Booker does not look in, fails here rather
+    /// than in front of a reader.
+    fn build_what_the_reader_typed(&mut self) {
+        let output = Command::new(BOOKER)
+            .arg("build")
+            .arg(".")
+            .current_dir(&self.cwd)
+            .output()
+            .unwrap_or_else(|error| panic!("{}: cannot run booker: {error}", self.tutorial));
+
+        let printed = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            output.status.success(),
+            "{}: the files this tutorial tells the reader to create do not make a book \
+             that builds.\n{printed}",
+            self.tutorial
+        );
+        assert!(
+            printed.contains("Problems: none"),
+            "{}: the book this tutorial tells the reader to create has problems in it.\n\
+             A tutorial may walk somebody into a mistake on purpose — but then it must \
+             show them the mistake, and this one does not reach that far.\n{printed}",
+            self.tutorial
+        );
+    }
+
     fn write_file(&self, path: &str, fence: &Fence) {
         let target = self.cwd.join(path);
         if let Some(parent) = target.parent() {

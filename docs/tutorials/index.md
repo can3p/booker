@@ -10,10 +10,14 @@ to do.
 | # | Tutorial | What you will have made | What it assumes |
 |---|---|---|---|
 | 01 | [Your first book](01-your-first-book.md) | A two-chapter book, written by you, built into a PDF | Nothing. It starts at installing `booker`. |
+| 02 | [The Booker window](02-the-app.md) | The same kind of book, made in the application, exported and kept up to date | Nothing. It starts at downloading the installer. |
 
-That is the whole list today, and it covers everything Booker can currently do. Booker
-is a command-line tool at this point in its life: there is no application window, no
-preview, and no styling beyond the page size and margins. Each of those arrives with a
+Between them those two cover everything Booker can currently do. There are two ways to
+use it — the `booker` command and the window — and they share one layout engine, so a
+book cannot come out differently depending on which you chose.
+
+What is *not* here yet: styling beyond the page size and margins, images, page rules,
+and anything about how a book looks that `book.toml` does not hold. Each arrives with a
 tutorial of its own — see [`../PLAN.md`](../PLAN.md) §8 for the order, and
 [`../WAVE-LOG.md`](../WAVE-LOG.md) for what has actually shipped.
 
@@ -70,6 +74,22 @@ them needs fixing.
 For the steps the test cannot or should not perform: cloning the repository, `cargo
 install`, `git commit`, opening a PDF. The block is still shown to the reader exactly
 as written, so it must still be true — it is just not checked.
+
+### A tutorial about the window, which has no commands in it
+
+A tutorial like [02](02-the-app.md) tells somebody what to click, not what to type, so
+there is nothing for the test to run. It is still checked, and in the way that matters:
+**the files it tells the reader to create are written and built as a book**, which must
+succeed and report `Problems: none`. A `book.toml` with a typo in it, or a chapter put
+somewhere Booker does not look, fails the test rather than a reader.
+
+So a tutorial must do one of two things — run commands, or create files. One that does
+neither is checked by nothing, and the test says so.
+
+The rest of such a tutorial — what the window says, where the menu item is — is not
+mechanically checkable, and is walked through by hand before the wave that changed it
+closes. That is a real step, not a formality: Wave 0.6's tutorial passed its test while
+describing paragraphs Booker does not actually produce.
 
 ### ` ```<language> file=<path> ` — this is a file, write it
 

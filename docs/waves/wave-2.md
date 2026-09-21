@@ -169,7 +169,7 @@ Extend `01-your-first-book.md` for the terminal: choosing a template, what the t
 ## Exit criteria
 
 - ⬜ **The demo at the top, performed end to end by a person.** The terminal half is performed by tutorials 01 and 03, which the test suite replays. The window half needs somebody at the window: the session that built the wave could not see it.
-- ✅ All four templates build clean and were reviewed as images; the golden suite guards four books built on them. ⬜ It is yet to run on all three platforms — the wave's pull request does that.
+- ✅ All four templates build clean and were reviewed as images; the golden suite guards four books built on them, and passed on macOS, Linux and Windows in PR #13's first run.
 - ✅ `booker check`, `booker where` and `booker page` print what the window shows — the same diagnostics list, and the same engine calls behind click-to-source.
 - ✅ No path through the window loses unsaved text: a save over a changed file is refused and both versions offered; a reload keeps unsaved typing; covered by session and store tests.
 - ✅ A project made by this wave opens in the Wave 1 build with its new keys preserved, and a Wave 1 project opens here unchanged — checked with both binaries, every file byte-identical afterwards.

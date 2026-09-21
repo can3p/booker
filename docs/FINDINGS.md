@@ -278,5 +278,6 @@ Format:
 ### The golden renders are deterministic on one machine; across platforms is CI's to say
 - Learned: 2026-09-21, Wave 2 / track G
 - What: `typst-render` rasterises in software, and two runs — and a regeneration with nothing changed — produced byte-identical PNGs. The suite still compares per pixel with a tolerance (a channel may differ by 24 of 255, a page by 0.1% of its pixels), because whether the three platforms agree to the byte has not been measured yet.
-- Why it matters: if the first three-platform run shows identical bytes, the tolerance can tighten; if it shows differences, this entry should say how large they were before anybody loosens it. Moving one theme spacing value changed 3.9% of a page, so the current tolerance is far below any real change.
+- The first three-platform run (PR #13) passed on macOS, Linux and Windows within that tolerance. A pass does not say by how much the pages differed, so byte identity across platforms is still unmeasured.
+- Why it matters: if a later run shows identical bytes, the tolerance can tighten; if it shows differences, this entry should say how large they were before anybody loosens it. Moving one theme spacing value changed 3.9% of a page, so the current tolerance is far below any real change.
 - Where: `crates/booker-cli/tests/golden.rs`, `fixtures/golden/`.

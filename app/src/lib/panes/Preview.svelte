@@ -18,24 +18,49 @@
    * The revision is in each URL, so an edit changes every URL and the old
    * images are simply never asked for again (`app/src-tauri/src/protocol.rs`).
    */
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
 
   import type { Book } from "../book.svelte";
   import { pageImageUrl } from "../ipc";
+  import { PX_PER_MM, toPixels } from "../units";
 
   let { book }: { book: Book } = $props();
 
   /** How far outside the viewport a page is fetched, so scrolling finds it
    *  already drawn rather than blank. */
   const MARGIN = "600px";
+  /** Room around a page inside the scroller, so "fit" leaves a gap. */
+  const GUTTER = 32;
 
-  let zoom = $state(1);
+  /** Fit the page's width to the pane, fit a whole page in view, or a
+   *  fixed size. Fit width is where a book is read from. */
+  type Zoom = "width" | "page" | number;
+  let mode = $state<Zoom>("width");
   let visible = $state(new Set<number>());
   let observer: IntersectionObserver | null = null;
+  let scroller = $state<HTMLElement | null>(null);
+  let paneWidth = $state(0);
+  let paneHeight = $state(0);
+
+  /** The first page stands for the book: fitting is by its size. */
+  let first = $derived(book.layout?.pages[0] ?? null);
+
+  let zoom = $derived.by(() => {
+    if (typeof mode === "number") return mode;
+    if (!first || paneWidth === 0) return 1;
+    const byWidth = (paneWidth - GUTTER) / toPixels(first.width);
+    if (mode === "width") return Math.max(0.1, byWidth);
+    const byHeight = (paneHeight - GUTTER) / toPixels(first.height);
+    return Math.max(0.1, Math.min(byWidth, byHeight));
+  });
 
   /** A page is drawn at the window's pixel density, so it is sharp on a
-   *  retina display and not needlessly large elsewhere. */
-  let scale = $derived(zoom * (typeof devicePixelRatio === "number" ? devicePixelRatio : 1));
+   *  retina display and not needlessly large elsewhere. Rounded, so a pane
+   *  resized by a pixel does not ask for every page again. */
+  let scale = $derived(
+    Math.round(zoom * (typeof devicePixelRatio === "number" ? devicePixelRatio : 1) * 4) / 4 ||
+      0.25,
+  );
 
   // A new revision is a different book: everything on screen must be asked
   // for again, and nothing off screen should be.
@@ -70,15 +95,43 @@
     };
   }
 
-  /** Millimetres to CSS pixels, so the box is the page's real size before
-   *  the image arrives. `Length` serialises as a string with its unit. */
-  function toPixels(length: string): number {
-    const match = /^(-?[\d.]+)(mm|cm|in|pt|px)$/.exec(length);
-    if (!match) return 0;
-    const value = Number(match[1]);
-    const inches = { mm: 1 / 25.4, cm: 1 / 2.54, in: 1, pt: 1 / 72, px: 1 / 96 }[match[2]] ?? 0;
-    return value * inches * 96;
+  /** Change the zoom and keep the same part of the book in view: the
+   *  scroll position is a fraction of the whole, and stays one. */
+  async function setZoom(next: Zoom) {
+    const before = scroller;
+    const fraction = before ? before.scrollTop / Math.max(1, before.scrollHeight) : 0;
+    mode = next;
+    await tick();
+    if (scroller) scroller.scrollTop = fraction * scroller.scrollHeight;
   }
+
+  function step(by: number) {
+    void setZoom(Math.min(4, Math.max(0.25, Math.round((zoom + by) * 4) / 4)));
+  }
+
+  /** Click-to-source: where on the page, in millimetres, the click was. */
+  function clicked(event: MouseEvent, index: number) {
+    const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const perMm = PX_PER_MM * zoom;
+    void book.showSource(
+      index,
+      (event.clientX - box.left) / perMm,
+      (event.clientY - box.top) / perMm,
+    );
+  }
+
+  // Cursor-to-page: bring the cursor's page into view when it moves to
+  // another one. Within a page the preview stays still — following every
+  // line would make it jitter while someone types.
+  let shownPage = -1;
+  $effect(() => {
+    const spot = book.cursorSpot;
+    if (!spot || !scroller || spot.page === shownPage) return;
+    shownPage = spot.page;
+    scroller
+      .querySelector(`[data-page="${spot.page}"]`)
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
 </script>
 
 <section>
@@ -88,13 +141,20 @@
       {book.pageCount === 1 ? "page" : "pages"}
     </span>
     <span class="zoom">
-      <button onclick={() => (zoom = Math.max(0.25, zoom - 0.25))} aria-label="Zoom out">−</button>
-      <span class="level">{Math.round(zoom * 100)}%</span>
-      <button onclick={() => (zoom = Math.min(4, zoom + 0.25))} aria-label="Zoom in">+</button>
+      <button class:on={mode === "width"} onclick={() => setZoom("width")} title="Fit the page's width">Width</button>
+      <button class:on={mode === "page"} onclick={() => setZoom("page")} title="Fit a whole page">Page</button>
+      <button onclick={() => step(-0.25)} aria-label="Zoom out">−</button>
+      <button class="level" onclick={() => setZoom(1)} title="Actual size">{Math.round(zoom * 100)}%</button>
+      <button onclick={() => step(0.25)} aria-label="Zoom in">+</button>
     </span>
   </header>
 
-  <div class="scroller">
+  <div
+    class="scroller"
+    bind:this={scroller}
+    bind:clientWidth={paneWidth}
+    bind:clientHeight={paneHeight}
+  >
     {#if book.layout && book.layout.pages.length > 0}
       {#each book.layout.pages as page (page.index)}
         <figure
@@ -104,11 +164,23 @@
           style="width: {toPixels(page.width) * zoom}px; height: {toPixels(page.height) * zoom}px"
         >
           {#if visible.has(page.index)}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
             <img
               src={pageImageUrl(book.layout.revision, page.index, scale)}
               alt="Page {page.label ?? page.index + 1}"
               loading="lazy"
+              title="Click to find this in the text"
+              onclick={(event) => clicked(event, page.index)}
             />
+          {/if}
+          {#if book.cursorSpot?.page === page.index}
+            <span
+              class="cursor"
+              aria-hidden="true"
+              style="left: {(book.cursorSpot.x - 1.2) * PX_PER_MM * zoom}px; top: {(book.cursorSpot.y - 3.5) *
+                PX_PER_MM *
+                zoom}px; height: {4.5 * PX_PER_MM * zoom}px"
+            ></span>
           {/if}
           <figcaption>{page.label ?? page.index + 1}</figcaption>
         </figure>
@@ -155,6 +227,10 @@
     line-height: 1.4;
   }
 
+  .zoom button.on {
+    background: var(--selected);
+  }
+
   .level {
     font-variant-numeric: tabular-nums;
     min-width: 3ch;
@@ -182,6 +258,18 @@
     display: block;
     width: 100%;
     height: 100%;
+    cursor: text;
+  }
+
+  /* Where the editor's cursor is, on the page: a caret in the margin
+     beside the line. */
+  .cursor {
+    position: absolute;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent, #3b6ea5);
+    opacity: 0.75;
+    pointer-events: none;
   }
 
   figcaption {

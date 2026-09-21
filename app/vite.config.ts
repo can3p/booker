@@ -24,6 +24,10 @@ export default defineConfig({
     // Matches the oldest webview Tauri 2 supports on each platform.
     target: ["es2021", "chrome100", "safari15"],
     sourcemap: true,
+    // The bundle is read from the application's own files, never over a
+    // network, so Vite's 500 kB warning (written for web pages) is noise;
+    // CodeMirror alone is most of a megabyte.
+    chunkSizeWarningLimit: 2000,
   },
   test: {
     environment: "jsdom",

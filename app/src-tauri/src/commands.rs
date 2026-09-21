@@ -16,7 +16,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use booker_core::{
-    ChapterText, CompileResult, CompileTarget, ExportRequest, ProjectInfo, RenderRequest,
+    ChapterText, CompileResult, CompileTarget, ExportRequest, PagePoint, ProjectInfo,
+    RenderRequest, SaveOutcome, SourceLocation,
 };
 use tauri::ipc::Response;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -155,16 +156,97 @@ pub fn read_chapter(
     open.read_chapter(&path).map_err(|error| error.to_string())
 }
 
-/// Write a chapter back and describe the project as it now stands.
+/// Write a chapter back — or, when the file changed underneath, write
+/// nothing and hand back both versions. `base` is the text the editor last
+/// loaded or saved.
 #[tauri::command]
 pub fn save_chapter(
     session: State<'_, Mutex<Session>>,
     path: String,
     text: String,
+    base: String,
+) -> CommandResult<SaveOutcome> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let open = session.current_mut().ok_or_else(nothing_open)?;
+    open.save_chapter(&path, &text, &base)
+        .map_err(|error| error.to_string())
+}
+
+/// Click-to-source: the place in a chapter that produced what is drawn at
+/// `point`, or `None` for a margin, a page number, the contents. The CLI
+/// twin is `booker page`.
+#[tauri::command]
+pub fn source_at(
+    session: State<'_, Mutex<Session>>,
+    point: PagePoint,
+) -> CommandResult<Option<SourceLocation>> {
+    let session = session.lock().map_err(poisoned)?;
+    let open = session.current().ok_or_else(nothing_open)?;
+    Ok(open.source_at(&point))
+}
+
+/// Cursor-to-page: where a place in a chapter landed. The CLI twin is
+/// `booker where`.
+#[tauri::command]
+pub fn pages_at(
+    session: State<'_, Mutex<Session>>,
+    location: SourceLocation,
+) -> CommandResult<Vec<PagePoint>> {
+    let session = session.lock().map_err(poisoned)?;
+    let open = session.current().ok_or_else(nothing_open)?;
+    Ok(open.pages_at(&location))
+}
+
+/// Add a chapter after `after` (or at the end). Returns the new chapter's
+/// path and the book as it now is.
+#[tauri::command]
+pub fn add_chapter(
+    session: State<'_, Mutex<Session>>,
+    after: Option<String>,
+    title: String,
+    text: Option<String>,
+) -> CommandResult<(String, ProjectInfo)> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let open = session.current_mut().ok_or_else(nothing_open)?;
+    open.add_chapter(after.as_deref(), &title, text.as_deref())
+        .map_err(|error| error.to_string())
+}
+
+/// Move a chapter to `index` in the reading order.
+#[tauri::command]
+pub fn move_chapter(
+    session: State<'_, Mutex<Session>>,
+    path: String,
+    index: usize,
 ) -> CommandResult<ProjectInfo> {
     let mut session = session.lock().map_err(poisoned)?;
     let open = session.current_mut().ok_or_else(nothing_open)?;
-    open.save_chapter(&path, &text)
+    open.move_chapter(&path, index)
+        .map_err(|error| error.to_string())
+}
+
+/// Take a chapter out of the book. Its file stays in the folder.
+#[tauri::command]
+pub fn remove_chapter(
+    session: State<'_, Mutex<Session>>,
+    path: String,
+) -> CommandResult<ProjectInfo> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let open = session.current_mut().ok_or_else(nothing_open)?;
+    open.remove_chapter(&path)
+        .map_err(|error| error.to_string())
+}
+
+/// Give a chapter a new title (its first heading).
+#[tauri::command]
+pub fn rename_chapter(
+    session: State<'_, Mutex<Session>>,
+    path: String,
+    title: String,
+) -> CommandResult<ProjectInfo> {
+    let mut session = session.lock().map_err(poisoned)?;
+    let open = session.current_mut().ok_or_else(nothing_open)?;
+    open.rename_chapter(&path, &title)
         .map_err(|error| error.to_string())
 }
 
@@ -212,16 +294,22 @@ mod tests {
     #[test]
     fn the_commands_implemented_here_are_in_the_contract() {
         for implemented in [
+            "add_chapter",
             "close_project",
             "compile",
             "export_pdf",
+            "move_chapter",
             "open_project",
+            "pages_at",
             "project_info",
             "read_chapter",
             "recent_projects",
             "reload_project",
+            "remove_chapter",
+            "rename_chapter",
             "render_page",
             "save_chapter",
+            "source_at",
         ] {
             assert!(
                 COMMANDS.contains(&implemented),
@@ -234,28 +322,27 @@ mod tests {
     /// implemented yet. A track that implements one moves it from here to
     /// the list above; the wave is not finished while this list has
     /// anything in it (`docs/waves/wave-2.md`).
-    const NOT_YET_IMPLEMENTED: &[&str] = &[
-        "add_chapter",    // track C
-        "move_chapter",   // track C
-        "pages_at",       // track D
-        "remove_chapter", // track C
-        "rename_chapter", // track C
-        "source_at",      // track D
-    ];
+    const NOT_YET_IMPLEMENTED: &[&str] = &[];
 
     #[test]
     fn every_name_in_the_contract_is_implemented_or_listed_as_not_yet() {
         let implemented = [
+            "add_chapter",
             "close_project",
             "compile",
             "export_pdf",
+            "move_chapter",
             "open_project",
+            "pages_at",
             "project_info",
             "read_chapter",
             "recent_projects",
             "reload_project",
+            "remove_chapter",
+            "rename_chapter",
             "render_page",
             "save_chapter",
+            "source_at",
         ];
         for name in COMMANDS {
             assert!(

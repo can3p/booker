@@ -16,6 +16,7 @@
 //! # Ok::<(), booker_core::Error>(())
 //! ```
 
+mod chapters;
 mod config;
 mod content;
 mod edit;

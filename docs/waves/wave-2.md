@@ -125,7 +125,7 @@ The real translation: themes, `chapter.start` (`pagebreak(to: "odd")` for `right
 
 ### C. Editor — tier M
 **Owns:** `app/src/lib/panes/Editor.svelte`, `app/src/lib/editor/**` (new), `app/src/lib/panes/Sidebar.svelte`.
-CodeMirror 6 in place of the `<textarea>`: Markdown highlighting with headings, emphasis and strong shown styled, and the syntax markers dimmed — not hidden: hiding them moves the text under the cursor, which is worse for an amateur than seeing a `#`. The autosave policy stays in the store, unchanged. **The chapter tree**: add, rename, reorder and remove chapters from the sidebar, each a targeted edit of `book.toml`'s `chapters` list through `ConfigEditor` plus the file operation, through new commands `add_chapter`, `rename_chapter`, `move_chapter`, `remove_chapter` (removal moves the file to the system trash rather than deleting it). These are writes, not questions about a book, so they need no CLI twin — an agent edits `book.toml` and renames a file, which is what the project being plain text is for (`AGENTS.md` §7, last rule).
+CodeMirror 6 in place of the `<textarea>`: Markdown highlighting with headings, emphasis and strong shown styled, and the syntax markers dimmed — not hidden: hiding them moves the text under the cursor, which is worse for an amateur than seeing a `#`. The autosave policy stays in the store, unchanged. **The chapter tree**: add, rename, reorder and remove chapters from the sidebar, each a targeted edit of `book.toml`'s `chapters` list through `ConfigEditor` plus the file operation, through new commands `add_chapter`, `rename_chapter`, `move_chapter`, `remove_chapter`. *Changed during the wave:* removal takes the chapter out of `book.toml` and leaves the file in the folder, rather than moving it to the system trash — nothing is deleted at all, and no platform-specific trash dependency is needed. Rename rewrites the chapter's first heading and keeps the file name. These are writes, not questions about a book, so they need no CLI twin — an agent edits `book.toml` and renames a file, which is what the project being plain text is for (`AGENTS.md` §7, last rule).
 **Done when:** typing in a 10,000-word chapter stays smooth, a chapter added in the sidebar appears in `book.toml` in the place it was dropped with the file's comments intact, and component tests cover the tree's operations.
 
 ### D. Preview — tier M
@@ -161,6 +161,10 @@ Extend `01-your-first-book.md` for the terminal: choosing a template, what the t
 4. **E**, then **C** and **D** — the conflict handling changes the store that the editor and preview both sit on.
 5. **H** throughout: each track's user-visible part lands with its tutorial paragraph, and the last pass renders every tutorial's claims and reads them.
 6. Integration: the full suite on all three platforms, the demo performed from a fresh clone, `docs/WAVE-LOG.md`, `docs/FINDINGS.md`, `docs/OPEN-QUESTIONS.md`, `AGENTS.md` "where things stand", and the pull request into `main`.
+
+## Found during the wave
+
+- **`THIRD-PARTY.md` lists no JavaScript.** It covers the Rust crates and the fonts, but the window bundles Svelte and Tauri's JavaScript API (since Wave 1) and now CodeMirror, all MIT, whose licences ask for their notice to travel with the software. `cargo xtask third-party` must learn to read the app's production dependencies before the wave closes.
 
 ## Exit criteria
 

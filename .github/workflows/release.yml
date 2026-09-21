@@ -35,8 +35,8 @@ on:
       # as a prerelease, so it is not what `releases/latest` points at and
       # no installed copy is offered it. Switching channels from inside the
       # application needs a second manifest at a fixed URL and a setting to
-      # choose it; that is Wave 2, and `docs/OPEN-QUESTIONS.md` Q-12 says
-      # why it was not worth building before anyone has used a beta.
+      # choose it, which waits until somebody wants a beta —
+      # `docs/OPEN-QUESTIONS.md` Q-12 says why.
       - "v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+"
   # Building the installers without publishing anything, to find out whether
   # they build at all. Nothing is released, nothing is signed for update.
@@ -55,8 +55,33 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
+  # The tag names the release, but the application reports the version in
+  # `Cargo.toml` — `tauri.conf.json` sets none, so Tauri reads the crate's —
+  # and that is also the version written into `latest.json`. The updater
+  # compares those versions, not tag names: a `v0.2.1` tag on a build that
+  # still says 0.2.0 is never offered to anyone. So a tag that disagrees
+  # with the version is refused here, in seconds, before four builds start.
+  version:
+    name: Tag matches the version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compare the tag with Cargo.toml and app/package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          cargo_version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "booker-app") | .version')
+          node_version=$(jq -r .version app/package.json)
+          echo "tag $tag, Cargo.toml $cargo_version, app/package.json $node_version"
+          if [ "$tag" != "$cargo_version" ] || [ "$tag" != "$node_version" ]; then
+            echo "::error::The tag $GITHUB_REF_NAME does not match the version the application reports. Set the workspace version in Cargo.toml and the version in app/package.json to $tag, merge that, then tag again (CONTRIBUTING.md, 'Making a release')."
+            exit 1
+          fi
+
   bundle:
     name: ${{ matrix.name }}
+    needs: version
     runs-on: ${{ matrix.os }}
     strategy:
       # One platform failing must not cancel the others: a release where

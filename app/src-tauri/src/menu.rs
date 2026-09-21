@@ -47,6 +47,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     {
         let about = AboutMetadata {
             name: Some("Booker".into()),
+            version: Some(app.package_info().version.to_string()),
             ..Default::default()
         };
         menu.append(&Submenu::with_items(
@@ -96,6 +97,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     {
         let about = AboutMetadata {
             name: Some("Booker".into()),
+            version: Some(app.package_info().version.to_string()),
             ..Default::default()
         };
         menu.append(&Submenu::with_items(

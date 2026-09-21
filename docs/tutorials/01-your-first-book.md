@@ -31,9 +31,9 @@ $ cargo install --path crates/booker-cli
 The first build takes a few minutes, because it compiles the layout engine that turns
 your words into pages. When it finishes, check that your shell can find the command:
 
-```console ignore
+```console
 $ booker --version
-booker 0.1.0
+booker 0.2.0
 ```
 
 **If your shell says `command not found: booker`**, Rust put it somewhere your shell is

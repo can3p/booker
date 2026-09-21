@@ -822,12 +822,12 @@ Every crate compiled into a Booker build, grouped by licence. Generated from the
 - bitflags 2.13.2
 - block-buffer 0.10.4
 - block2 0.6.2
-- booker-app 0.1.0
-- booker-cli 0.1.0
-- booker-core 0.1.0
-- booker-doc 0.1.0
-- booker-project 0.1.0
-- booker-typst 0.1.0
+- booker-app 0.2.0
+- booker-cli 0.2.0
+- booker-core 0.2.0
+- booker-doc 0.2.0
+- booker-project 0.2.0
+- booker-typst 0.2.0
 - brotli 8.0.4
 - brotli-decompressor 5.0.3
 - bumpalo 3.20.3
@@ -1312,7 +1312,7 @@ Every crate compiled into a Booker build, grouped by licence. Generated from the
 - xattr 1.6.1
 - xmlwriter 0.1.0
 - xmp-writer 0.3.3
-- xtask 0.1.0
+- xtask 0.2.0
 - yaml-rust 0.4.5
 - zerocopy 0.8.57
 - zerocopy-derive 0.8.57

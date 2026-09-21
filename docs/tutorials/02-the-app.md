@@ -16,6 +16,10 @@ can both have it open.
 
 ## 1. Install Booker
 
+> **Not yet.** Booker's first release, `v0.2.0`, is being prepared and the releases page
+> below is still empty. Until it appears, run the window from a copy of the source instead —
+> [`CONTRIBUTING.md`](../../CONTRIBUTING.md) says how — and pick this tutorial up at step 2.
+
 Go to <https://github.com/can3p/booker/releases>, open the newest release, and download
 the file for your computer:
 
@@ -154,7 +158,8 @@ Booker updates itself. Choose **Check for Updates…** — on a Mac it is under 
 **Booker** menu, elsewhere under **Help**.
 
 If there is a newer version, Booker says so, downloads it, and installs it when you
-restart. If there is not, it says Booker is up to date.
+restart. If there is not, it says Booker is up to date. To see which version you are
+running, choose **About Booker** from the same menu.
 
 Every update is signed, and an update whose signature does not match is refused rather
 than installed. That is true even though the installer you downloaded in step 1 was not

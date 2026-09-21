@@ -109,10 +109,12 @@ Third-party notices (Typst is Apache-2.0; the bundled font licences are in `crat
 
 ## What remains, in order
 
-1. Merge the wave pull request's prerequisites and get CI green on all three platforms.
-2. Tag `v0.2.0`. The workflow builds four targets and leaves a **draft** release.
-3. Install it. Tag a trivial `v0.2.1`, publish that draft, and confirm the installed `v0.2.0` offers and installs it. Write the result into the wave log's "Update check" line — the line is written when it is true, not before.
-4. Publish `v0.2.0`, merge into `main`.
+The wave pull request merged into `main` before these ran, so they happen on `main`, each version bump through its own small pull request (`CONTRIBUTING.md`, "Making a release").
+
+1. ~~Set the version to `0.2.0`~~ — it was still `0.1.0`, which would have made both releases below identical to the updater. Done, together with a check in `release.yml` that refuses a tag differing from the version.
+2. Tag `v0.2.0`. The workflow builds four targets and leaves a **draft** release. Publish it, and install it.
+3. Bump the version to `0.2.1` by pull request, tag it, publish that draft, and confirm the installed `v0.2.0` offers it, installs it and restarts as `0.2.1`. Write the result into the wave log's "Update check" line — the line is written when it is true, not before.
+4. Correct the documents that say the release is pending.
 
 ## Not in this wave
 

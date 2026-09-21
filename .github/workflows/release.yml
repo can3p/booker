@@ -114,19 +114,46 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
+      # pnpm comes from `packageManager` in app/package.json, installed
+      # directly rather than through corepack. Corepack's shim is what
+      # `ci.yml` uses on Linux, but on the Windows runner the shim that
+      # answers `pnpm` belongs to the Node installation rather than to the
+      # corepack we update, and it fails with `Cannot find module
+      # …\corepack\v1\pnpm\<version>\bin\pnpm.cjs` (docs/FINDINGS.md).
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: app/package.json
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .tool-versions
 
-      # The corepack that ships with Node 20 cannot verify the registry
-      # signature on a current pnpm, and fails in a way that looks like a
-      # broken install rather than a signature problem: it reports
-      # `Cannot find module …/pnpm.cjs`. Updating it first is what
-      # CONTRIBUTING.md tells a person to do, so CI does the same.
-      - name: Enable pnpm
+      # Apple Developer ID, only when it exists. Tauri treats a *defined*
+      # APPLE_CERTIFICATE as an instruction to sign, even an empty one, and
+      # an unset repository secret arrives as an empty string — so passing
+      # the secrets straight to the build fails every macOS bundle with
+      # `failed to import keychain certificate`. When the secrets are
+      # added, this exports them and the bundles are signed and notarized
+      # without another change to this file.
+      - name: Apple signing, when it is configured
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          npm install -g corepack@latest
-          corepack enable pnpm
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "No Apple Developer ID: the macOS bundles are built unsigned."
+            exit 0
+          fi
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+                      APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            { echo "$name<<__BOOKER_EOF__"; printenv "$name"; echo "__BOOKER_EOF__"; } >> "$GITHUB_ENV"
+          done
 
       # Generated from the Rust contracts, never committed, and the frontend
       # does not typecheck without them.
@@ -144,15 +171,8 @@ jobs:
           # even when the installers work.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Apple Developer ID. Absent for now; when these are set, the
-          # macOS bundles are signed and notarized without another change
-          # to this file.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # The Apple Developer ID variables, when there are any, come from
+          # the step above through the job environment.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: app

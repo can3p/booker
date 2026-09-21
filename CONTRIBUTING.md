@@ -23,6 +23,7 @@ cargo fmt --all                             # formatting
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test -p booker-core export_bindings   # regenerate TypeScript types from the Rust contracts
 cargo xtask --help                          # development tasks (golden snapshots, evals)
+cargo xtask golden                          # accept how the golden books look now — then look at them
 cargo xtask third-party                     # rewrite THIRD-PARTY.md from the dependency tree
 ```
 
@@ -64,6 +65,14 @@ data `cargo deny` already produces and rewrites the file; the `deps` job runs it
 `--check` and fails when a dependency has changed and nobody regenerated it. Editing the file
 by hand is wasted work — the next run overwrites it. The font notices in it are copied
 verbatim from `crates/booker-typst/fonts/NOTICE.txt`, which *is* written by hand.
+
+**The golden books are pictures, and a test compares them.** `crates/booker-cli/tests/golden.rs`
+lays out each book in `fixtures/golden/`, renders every page at 48 pixels to the inch and
+compares it with `fixtures/golden/<book>/snapshots/`. A change to how books look fails it,
+naming the page, and writes the new render and a picture of what moved (in red) to
+`target/golden/`. When the change was meant, `cargo xtask golden` rewrites the snapshots —
+then open every changed image before committing it; a snapshot nobody looked at guards
+nothing.
 
 **The `app` job is skipped when nothing it covers changed.** A `changes` job diffs the pull
 request against its base and looks for `app/`, `crates/booker-core/` (the contracts the

@@ -53,7 +53,7 @@ $EDITOR ~/books/my-book/content/01-the-first-chapter.md
 
 # Build the PDF
 cargo run --release -p booker-cli -- build ~/books/my-book
-# → Built build/the-secret-garden-of-mia.pdf — 1 pages in 98 ms
+# → Built build/the-secret-garden-of-mia.pdf — 1 page in 98 ms
 ```
 
 To type `booker` instead of `cargo run -p booker-cli --`, install it onto your PATH:
@@ -69,9 +69,12 @@ booker build ~/books/my-book
 | Command | What it does |
 |---|---|
 | `booker new <path> [--title <title>] [--template <name>]` | Create a book project from a template: `novel` (the default), `picture-book`, `poetry` or `paper`. Each starts with sample text that says how to use it, and its own theme. |
-| `booker build <path>` | Load the project, report any problems, and write `build/<title>.pdf`. |
+| `booker build <path>` | Load the project, lay it out, report any problems, and write `build/<title>.pdf`. |
+| `booker check <path> [--format json]` | Lay the book out and report every problem — with its file, line and rule ID — writing nothing. `json` is for scripts and assistants. |
+| `booker where <file>:<line> [<path>]` | Say which page a line of a chapter landed on. |
+| `booker page <n> [<path>]` | Say which lines of which chapters are printed on page *n*. |
 
-`booker build` exits `0` when the book is clean, `1` when the project has errors, and `2` when the command itself could not run.
+`booker build` and `booker check` exit `0` when the book is clean, `1` when it has errors, and `2` when the command itself could not run. `where` exits `1` when the line prints nothing.
 
 ### The application
 

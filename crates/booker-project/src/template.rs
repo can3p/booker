@@ -255,15 +255,20 @@ anything else, so editing a file *is* editing the book.
 
 ## Before you say you are finished
 
-Run the build and read what it says:
+Check the book and read what it says:
 
 ```bash
-booker build .
+booker check .                 # or: booker check . --format json
 ```
 
-It prints every problem it found with the file, line and column it came
-from, each with a stable rule ID such as `BK-REF-001`. Errors mean the book
-will not come out right. Leave the project with none.
+It lays the book out without writing anything, and prints every problem
+with the file, line and column it came from, each with a stable rule ID
+such as `BK-REF-001`. It exits 1 while there are errors. Errors mean the
+book will not come out right; leave the project with none.
+
+`booker where content/01-chapter.md:12` says which page a line landed on,
+and `booker page 3` which lines are on a page — for when someone says
+"page 3 looks wrong".
 "#
     )
 }

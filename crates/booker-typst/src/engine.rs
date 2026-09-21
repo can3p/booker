@@ -12,10 +12,11 @@ use booker_core::{
 use booker_doc::Document;
 use typst::diag::{SourceResult, Warned};
 use typst::introspection::PagedPosition;
-use typst::layout::{Abs, Point};
+use typst::layout::{Abs, Frame, FrameItem, Point};
 use typst::model::Numbering;
+use typst::syntax::Span;
 use typst::utils::Scalar;
-use typst::World;
+use typst::{World, WorldExt};
 use typst_ide::Jump;
 use typst_layout::{Page, PagedDocument};
 use typst_pdf::PdfOptions;
@@ -166,6 +167,28 @@ impl Engine {
             Jump::File(id, offset) if id == self.world.main() => self.spans.to_source(offset),
             _ => None,
         }
+    }
+
+    /// What is on page `page` (0-based): for every character drawn there
+    /// that came from a chapter, the chapter and the Markdown offset — in
+    /// the order they were drawn, duplicates and all. `booker page` turns
+    /// this into line ranges. `None` when there is no such page.
+    pub fn page_sources(&self, page: u32) -> Option<Vec<(usize, usize)>> {
+        let document = self.document.as_ref()?;
+        let page = document.pages().get(usize::try_from(page).ok()?)?;
+        let mut glyphs = Vec::new();
+        collect_text_spans(&page.frame, &mut glyphs);
+        let main = self.world.main();
+        Some(
+            glyphs
+                .into_iter()
+                .filter(|(span, _)| span.id() == Some(main))
+                .filter_map(|(span, offset)| {
+                    let range = self.world.range(span)?;
+                    self.spans.to_source(range.start + usize::from(offset))
+                })
+                .collect(),
+        )
     }
 
     /// Where the Markdown at `offset` in chapter `chapter` landed: every
@@ -350,6 +373,17 @@ impl Engine {
                 self.project.root.display()
             ),
         })
+    }
+}
+
+/// The source span of every glyph in a frame, depth first.
+fn collect_text_spans(frame: &Frame, into: &mut Vec<(Span, u16)>) {
+    for (_, item) in frame.items() {
+        match item {
+            FrameItem::Group(group) => collect_text_spans(&group.frame, into),
+            FrameItem::Text(text) => into.extend(text.glyphs.iter().map(|glyph| glyph.span)),
+            _ => {}
+        }
     }
 }
 

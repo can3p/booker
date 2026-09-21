@@ -1,0 +1,12 @@
+title = "On Keeping Things in Jars"
+theme = "paper"
+
+[page]
+size = "a4"
+facing = false
+
+[page.margins]
+top = "25mm"
+bottom = "25mm"
+inside = "25mm"
+outside = "25mm"

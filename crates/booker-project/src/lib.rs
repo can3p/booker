@@ -87,7 +87,9 @@ impl Project {
         for chapter in &chapters {
             content::check_images(&root, chapter, &mut diagnostics);
             content::check_document(chapter, &mut diagnostics);
+            content::check_empty(chapter, &mut diagnostics);
         }
+        content::check_references(&chapters, &mut diagnostics);
 
         sort_diagnostics(&mut diagnostics);
 

@@ -6,6 +6,7 @@
 
 use clap::{Parser, Subcommand};
 
+mod golden;
 mod third_party;
 
 #[derive(Parser)]
@@ -40,7 +41,7 @@ fn main() -> anyhow::Result<()> {
         Command::Bindings => {
             anyhow::bail!("run `cargo test -p booker-core export_bindings` for now")
         }
-        Command::Golden => anyhow::bail!("golden snapshots arrive with Wave 2 track G"),
+        Command::Golden => golden::run(),
         Command::Eval { .. } => anyhow::bail!("the eval harness arrives with Wave 7 track I"),
         Command::ThirdParty { check } => third_party::run(check),
     }

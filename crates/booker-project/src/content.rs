@@ -39,6 +39,11 @@ impl Chapter {
     }
 
     /// The diagnostic location of a span in this chapter.
+    /// The byte offset of a 1-based line and column in this chapter.
+    pub fn offset_at(&self, line: u32, column: u32) -> Option<usize> {
+        self.lines.offset(&self.source, line, column)
+    }
+
     pub fn location(&self, span: Span) -> SourceLocation {
         self.lines
             .source_location(&self.source, &self.relative, span)
@@ -269,6 +274,111 @@ pub(crate) fn check_document(chapter: &Chapter, diagnostics: &mut Vec<Diagnostic
             )
             .with_severity(Severity::Warning)
             .at(chapter.location(span)),
+        );
+    }
+}
+
+/// Links between chapters point at ids, and ids must be unique across the
+/// whole book: `[see the garden](#garden)` needs exactly one element
+/// written `{#garden}` somewhere (`BK-REF-005`, `BK-REF-006`). A link to
+/// nowhere still lays out — as plain text — so these are about the author's
+/// intent, not about the book failing to build.
+pub(crate) fn check_references(chapters: &[Chapter], diagnostics: &mut Vec<Diagnostic>) {
+    // Every id, where it was written, in reading order.
+    let mut ids: Vec<(String, &Chapter, Span)> = Vec::new();
+    let mut links: Vec<(String, &Chapter, Span)> = Vec::new();
+    for chapter in chapters {
+        chapter.document().walk(&mut |node| {
+            let attributes = match node {
+                Node::Block(Block::Heading(heading)) => Some((&heading.attributes, heading.span)),
+                Node::Block(Block::Div(div)) => Some((&div.attributes, div.span)),
+                Node::Inline(Inline::Span(span)) => Some((&span.attributes, span.span)),
+                Node::Inline(Inline::Image(image)) => Some((&image.attributes, image.span)),
+                Node::Inline(Inline::Link(link)) => {
+                    if let Some(id) = link.url.trim().strip_prefix('#') {
+                        links.push((id.to_string(), chapter, link.span));
+                    }
+                    None
+                }
+                _ => None,
+            };
+            if let Some((attributes, owner)) = attributes {
+                if let Some(id) = &attributes.id {
+                    ids.push((id.clone(), chapter, attributes.span.unwrap_or(owner)));
+                }
+            }
+        });
+    }
+
+    let mut seen: std::collections::HashMap<&str, (&Chapter, Span)> =
+        std::collections::HashMap::new();
+    for (id, chapter, span) in &ids {
+        match seen.get(id.as_str()) {
+            Some((first, first_span)) => {
+                let first_at = first.location(*first_span);
+                diagnostics.push(
+                    Diagnostic::error(
+                        rules::DUPLICATE_ID,
+                        format!(
+                            "the id `{id}` is used twice — it is already on {}:{} — so a \
+                             link to `#{id}` cannot know which one it means",
+                            booker_core::display_path(&first_at.file),
+                            first_at.line
+                        ),
+                    )
+                    .at(chapter.location(*span)),
+                );
+            }
+            None => {
+                seen.insert(id, (chapter, *span));
+            }
+        }
+    }
+
+    let known: Vec<&str> = seen.keys().copied().collect();
+    for (id, chapter, span) in &links {
+        if seen.contains_key(id.as_str()) {
+            continue;
+        }
+        let suggestion = closest(id, &known)
+            .map(|near| format!(" Did you mean `#{near}`?"))
+            .unwrap_or_default();
+        diagnostics.push(
+            Diagnostic::error(
+                rules::UNRESOLVED_LINK,
+                format!(
+                    "this links to `#{id}`, but nothing in the book has that id.{suggestion} \
+                     An id is written after a heading, like `# The Garden {{#garden}}`."
+                ),
+            )
+            .at(chapter.location(*span)),
+        );
+    }
+}
+
+/// A chapter file that produces nothing on the page: empty, or only
+/// comments. Usually a file created and forgotten, or the answer to "why is
+/// my book shorter than I thought" (`BK-TEXT-001`).
+pub(crate) fn check_empty(chapter: &Chapter, diagnostics: &mut Vec<Diagnostic>) {
+    let mut prints = false;
+    chapter.document().walk(&mut |node| {
+        prints |= matches!(
+            node,
+            Node::Inline(Inline::Text { .. })
+                | Node::Inline(Inline::Image(_))
+                | Node::Inline(Inline::Code { .. })
+                | Node::Block(Block::Code(_))
+                | Node::Block(Block::ThematicBreak { .. })
+        );
+    });
+    if !prints {
+        diagnostics.push(
+            Diagnostic::error(
+                rules::EMPTY_CHAPTER,
+                "this chapter has nothing in it that will be printed".to_string(),
+            )
+            .with_severity(Severity::Warning)
+            .at(chapter.location(Span::new(0, 0))),
         );
     }
 }

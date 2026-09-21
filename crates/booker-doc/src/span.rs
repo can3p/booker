@@ -99,6 +99,31 @@ impl LineIndex {
         self.starts.len()
     }
 
+    /// The byte offset of a 1-based line and column — the way back from
+    /// what an editor shows, or what a person types after `booker where`.
+    /// A column past the end of its line lands at the end of the line;
+    /// a line past the end of the file is `None`.
+    pub fn offset(&self, source: &str, line: u32, column: u32) -> Option<usize> {
+        let index = usize::try_from(line).ok()?.checked_sub(1)?;
+        let start = *self.starts.get(index)?;
+        let end = self
+            .starts
+            .get(index + 1)
+            .copied()
+            .unwrap_or(self.len)
+            .min(source.len());
+        let text = source.get(start..end)?.trim_end_matches(['\n', '\r']);
+        let skip = usize::try_from(column.max(1) - 1).ok()?;
+        Some(
+            start
+                + text
+                    .char_indices()
+                    .nth(skip)
+                    .map(|(offset, _)| offset)
+                    .unwrap_or(text.len()),
+        )
+    }
+
     /// The diagnostic location for a span: the file as the user will see it
     /// (project-relative, `PLAN.md` §11.5), the line and column of its start,
     /// and the range itself so a tool can select exactly the right text.
@@ -121,6 +146,23 @@ impl LineIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_line_and_column_lead_back_to_the_offset() {
+        let source = "alpha\ngrandmère was\r\ngamma";
+        let index = LineIndex::new(source);
+        for offset in [0, 3, 6, 12, 22] {
+            let (line, column) = index.line_column(source, offset);
+            assert_eq!(index.offset(source, line, column), Some(offset), "{offset}");
+        }
+        assert_eq!(
+            index.offset(source, 2, 99),
+            Some(20),
+            "clamped to the end of the line, before the \\r\\n"
+        );
+        assert_eq!(index.offset(source, 9, 1), None);
+        assert_eq!(index.offset(source, 0, 1), None);
+    }
 
     #[test]
     fn counts_lines_from_one() {

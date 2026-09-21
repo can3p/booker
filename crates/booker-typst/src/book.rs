@@ -57,7 +57,9 @@ impl SpanMap {
         let mapping = self
             .entries
             .iter()
-            .filter(|m| m.typst.start <= offset && offset <= m.typst.end)
+            // Half-open, like every range in Booker: the block that ends
+            // where this text begins must not claim it.
+            .filter(|m| m.typst.contains(&offset))
             .min_by_key(|m| m.typst.len())?;
         let within = if mapping.text {
             (offset - mapping.typst.start).min(mapping.source.len())

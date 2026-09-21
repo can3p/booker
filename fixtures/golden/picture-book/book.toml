@@ -1,0 +1,11 @@
+title = "Pip and the Moon"
+theme = "picture-book"
+
+[page]
+size = "square"
+
+[page.margins]
+top = "16mm"
+bottom = "16mm"
+inside = "18mm"
+outside = "16mm"

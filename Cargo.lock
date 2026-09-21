@@ -295,6 +295,8 @@ dependencies = [
  "booker-project",
  "booker-typst",
  "clap",
+ "png 0.18.1",
+ "serde_json",
  "tempfile",
  "toml 0.8.23",
 ]

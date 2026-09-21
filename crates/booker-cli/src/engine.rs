@@ -1,6 +1,6 @@
 //! The seam toward the layout engine.
 //!
-//! `booker build` asks [`compile`] for a PDF. Everything about *how* a book
+//! Every command that needs pages asks [`lay_out`] for them. Everything about *how* a book
 //! becomes pages lives behind this one function: the CLI knows the request
 //! and the result (the `booker_core` contracts) and nothing else.
 //!
@@ -12,55 +12,47 @@
 
 use std::path::{Path, PathBuf};
 
-use booker_core::{BookConfig, CompileRequest, CompileResult};
-use booker_doc::Document;
-use booker_typst::Engine;
+use booker_core::{CompileRequest, CompileTarget};
+use booker_project::Project;
+use booker_typst::{Compilation, Engine};
 
-/// What a build attempt did.
-pub enum Outcome {
-    /// The engine ran and the PDF is on disk.
-    Compiled(Box<CompileResult>),
-    /// The engine could not answer. Carries the reason, already phrased for
-    /// a person: a failed build must say what to do about it.
-    Failed(String),
+/// Lay a loaded project out, once.
+///
+/// One engine, used for one command: the process exits afterwards. The
+/// application keeps its engine alive instead, which is what makes an edit
+/// re-render in milliseconds (`docs/FINDINGS.md`). The engine comes back
+/// with the compilation so that `where` and `page` can ask it about the
+/// pages it just made.
+///
+/// `Err` is a reason already phrased for a person: the engine could not
+/// answer at all. Anything wrong with the *book* is in the compilation's
+/// diagnostics instead.
+pub fn lay_out(project: &Project, target: CompileTarget) -> Result<(Engine, Compilation), String> {
+    let mut engine = Engine::open(project.reference().clone()).map_err(|e| e.to_string())?;
+    let chapters: Vec<(&str, &booker_doc::Document)> = project
+        .chapters()
+        .iter()
+        .map(|chapter| (chapter.source(), chapter.document()))
+        .collect();
+    engine
+        .set_book(project.config(), &chapters)
+        .map_err(|e| e.to_string())?;
+    let compilation = engine
+        .compile(&CompileRequest {
+            project: project.reference().clone(),
+            target,
+            revision: project.revision(),
+        })
+        .map_err(|e| e.to_string())?;
+    Ok((engine, compilation))
 }
 
-/// Lay the book out and write `output`.
-///
-/// One engine, used once: a build is a single compile and then the process
-/// exits. The application keeps its engine alive instead, which is what
-/// makes an edit re-render in milliseconds (`docs/FINDINGS.md`).
-pub fn compile(
-    request: &CompileRequest,
-    config: &BookConfig,
-    chapters: &[(&str, &Document)],
-    output: &Path,
-) -> Outcome {
-    let mut engine = match Engine::open(request.project.clone()) {
-        Ok(engine) => engine,
-        Err(error) => return Outcome::Failed(error.to_string()),
-    };
-    if let Err(error) = engine.set_book(config, chapters) {
-        return Outcome::Failed(error.to_string());
+/// Write the PDF a compilation produced.
+pub fn write_pdf(pdf: &[u8], output: &Path) -> Result<(), String> {
+    if let Some(parent) = output.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
-
-    let compilation = match engine.compile(request) {
-        Ok(compilation) => compilation,
-        Err(error) => return Outcome::Failed(error.to_string()),
-    };
-
-    if let Some(pdf) = compilation.pdf {
-        if let Some(parent) = output.parent() {
-            if let Err(error) = std::fs::create_dir_all(parent) {
-                return Outcome::Failed(format!("{}: {error}", parent.display()));
-            }
-        }
-        if let Err(error) = std::fs::write(output, pdf) {
-            return Outcome::Failed(format!("{}: {error}", output.display()));
-        }
-    }
-
-    Outcome::Compiled(Box::new(compilation.result))
+    std::fs::write(output, pdf).map_err(|e| format!("{}: {e}", output.display()))
 }
 
 /// Where a build writes, given a project root and a title.

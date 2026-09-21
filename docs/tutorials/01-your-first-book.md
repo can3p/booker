@@ -121,7 +121,7 @@ Chapters: 1
   content/01-the-first-chapter.md  74 words, 1 heading, 0 images   “The First Chapter”
   74 words and 0 images in all
 Problems: none
-Built build/the-moon-in-a-jar.pdf — 1 pages in … ms
+Built build/the-moon-in-a-jar.pdf — 1 page in … ms
 ```
 
 The `.` means "the book in this folder". You can also stand outside the folder and
@@ -455,6 +455,24 @@ Worth keeping straight: a **warning** is something Booker thinks you should look
 an **error** is something that will make the book come out wrong. Both are listed, both
 name a file and a line, and neither stops you from getting a PDF.
 
+### Check without building
+
+`booker build` always writes the PDF. When all you want to know is whether anything is
+wrong — before you send the book to someone, or over and over while you fix things —
+`booker check` lays the book out, reports, and writes nothing:
+
+```console
+$ booker check .
+Problems: 1 error, 1 warning
+  book.toml:5:1: warning[BK-FORMAT-005] unknown key `auther`; it is being kept unchanged — did you mean `author`?
+  book.toml:10:5: error[BK-REF-002] chapter `content/03-the-lid.md` is listed but the file is not there
+$ echo $?
+1
+```
+
+The same problems, the same `1`. Add `--format json` and the same list comes out in a
+form a program can read — which is what an assistant working in your book folder uses.
+
 ### Put it back
 
 Delete both mistakes — the `auther` line and the `content/03-the-lid.md` line:
@@ -497,6 +515,29 @@ $ echo $?
 ```
 
 `Problems: none`, and `0`. You have written a book.
+
+## 8. Find a line on the page, and a page in the text
+
+A book reflows, so "the second paragraph of chapter two" does not stay on the same page
+for long. Two commands answer the question either way round. Which page is line 7 of
+the second chapter on?
+
+```console
+$ booker where content/02-the-walk-home.md:7
+content/02-the-walk-home.md:7 is on page 5
+```
+
+And what is on page 3?
+
+```console
+$ booker page 3
+Page 3 shows:
+  content/01-the-jar.md:1–13
+```
+
+Page 3 is the whole of the first chapter, lines 1 to 13 of its file. Ask about page 4 and
+Booker says it has no text on it: it is the blank page left so that the next chapter
+starts on the right.
 
 ## When something else goes wrong
 

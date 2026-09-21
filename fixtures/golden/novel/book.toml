@@ -1,0 +1,8 @@
+title = "The Moon in a Jar"
+author = "Mia P."
+language = "en"
+theme = "novel"
+chapters = ["content/01-the-jar.md", "content/02-the-garden.md"]
+
+[page]
+size = "a5"

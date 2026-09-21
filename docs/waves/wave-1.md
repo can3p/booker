@@ -102,19 +102,14 @@ Third-party notices (Typst is Apache-2.0; the bundled font licences are in `crat
 ## Exit criteria
 
 - ✅ Installers for macOS, Windows and Linux, produced by CI — `.github/workflows/release.yml`, on a tag.
-- ⬜ **A `v0.2.0` installation updates itself to `v0.2.1`.** The last thing the wave does, and the one check that is never skipped. It needs two real releases and a person to install one, so it happens at integration, not in a track.
+- ⏸ **A `v0.2.0` installation updates itself to `v0.2.1`.** Paused with distribution (Q-13). The last thing the wave does, and the one check that is never skipped. It needs two real releases and a person to install one, so it happens at integration, not in a track.
 - ✅ The app opens a project, shows its pages, exports a PDF.
 - ✅ The application can be learned from `docs/tutorials/02-the-app.md` (`AGENTS.md` §4 criterion 3). Its prose still needs the by-hand walk-through before the wave closes — the test builds the files it tells a reader to create, but cannot read a sentence about where a menu item is.
 - ✅ `docs/WAVE-LOG.md` entry written; the documents in `AGENTS.md` §2 accurate.
 
-## What remains, in order
+## What remained, and what became of it
 
-The wave pull request merged into `main` before these ran, so they happen on `main`, each version bump through its own small pull request (`CONTRIBUTING.md`, "Making a release").
-
-1. ~~Set the version to `0.2.0`~~ — it was still `0.1.0`, which would have made both releases below identical to the updater. Done, together with a check in `release.yml` that refuses a tag differing from the version.
-2. Tag `v0.2.0`. The workflow builds four targets and leaves a **draft** release. Publish it, and install it.
-3. Bump the version to `0.2.1` by pull request, tag it, publish that draft, and confirm the installed `v0.2.0` offers it, installs it and restarts as `0.2.1`. Write the result into the wave log's "Update check" line — the line is written when it is true, not before.
-4. Correct the documents that say the release is pending.
+The wave pull request merged into `main` before the release steps ran. The version was fixed (it was still `0.1.0`), and the release workflow was fixed and proven by a dry run of all four targets. Then, on 2026-09-21, the owner paused distribution (`docs/OPEN-QUESTIONS.md` Q-13): no release was made, the update check was not performed, and the wave closed without them. They return with the first release after the pause.
 
 ## Not in this wave
 

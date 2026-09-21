@@ -6,7 +6,7 @@ Book authoring for people who want a good-looking book without learning typesett
 
 A Booker project is a plain folder: Markdown for the text, a few readable TOML files for how it should look. It lives in git, opens in any editor, and builds into a print-ready PDF. The layout engine is [Typst](https://typst.app), embedded in the application, so a 200-page novel lays out in about half a second.
 
-**Status: early, and not yet released.** A folder of Markdown becomes a printable PDF, from the command line or from the application window. The first installable release, `v0.2.0`, is being prepared; until it is published, both run from a source checkout. What it cannot do yet is most of what makes a book look like a book: fonts, headings, images, page rules and templates all come later. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
+**Status: early, and not released.** A folder of Markdown becomes a printable PDF, from the command line or from the application window. Booker is developed locally for now and nothing has been published, so both run from a source checkout. What it cannot do yet is most of what makes a book look like a book: fonts, headings, images, page rules and templates all come later. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
 
 ## Start here
 
@@ -75,9 +75,8 @@ booker build ~/books/my-book
 
 ### The application
 
-**There is no installer yet**: the first release, `v0.2.0`, has not been published, so for now
-the application runs from a source checkout, as below. Once it is out, you
-will download an installer from [the releases page](https://github.com/can3p/booker/releases) —
+**There is no installer yet**: nothing has been published, so for now the application runs
+from a source checkout, as below. Once there is a release, you will download an installer from [the releases page](https://github.com/can3p/booker/releases) —
 `.dmg` for macOS, `.exe` for Windows, `.AppImage`, `.deb` or `.rpm` for Linux — and
 [The Booker window](docs/tutorials/02-the-app.md) walks through the rest.
 

@@ -8,9 +8,15 @@
 //!
 //! So this reads `cargo deny list --format json`, which already knows every
 //! crate in the tree and what it is licensed under — the same data the
-//! `deps` CI job checks against `deny.toml`'s allow list — and writes the
-//! file. Run it with `cargo xtask third-party`; `--check` fails instead of
-//! writing, which is what CI uses to notice a stale file.
+//! `deps` CI job checks against `deny.toml`'s allow list — and, for the
+//! JavaScript bundled into the application window, `pnpm licenses list
+//! --prod`, and writes the file. Run it with `cargo xtask third-party`;
+//! `--check` fails instead of writing, which is what CI uses to notice a
+//! stale file.
+//!
+//! The two halves need different tools — `cargo deny` for one, an installed
+//! `app/node_modules` for the other — and CI has them in different jobs, so
+//! `--only rust` and `--only javascript` check one part of the file each.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -25,16 +31,37 @@ const OUTPUT: &str = "THIRD-PARTY.md";
 /// compiled into `booker-typst`, so nothing but this file can mention them.
 const FONT_NOTICE: &str = "crates/booker-typst/fonts/NOTICE.txt";
 
-/// Write the file, or check that it is current.
-pub fn run(check: bool) -> Result<()> {
+/// Where the JavaScript section starts; everything before it is the fonts
+/// and the Rust crates.
+const JAVASCRIPT: &str = "\n## JavaScript in the application window\n";
+
+/// Which part of the file to check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum Part {
+    /// The fonts and the Rust crates: needs `cargo deny`.
+    Rust,
+    /// The JavaScript bundled into the window: needs `app/node_modules`.
+    Javascript,
+}
+
+/// Write the file, or check that it is current — all of it, or one part.
+pub fn run(check: bool, only: Option<Part>) -> Result<()> {
     let root = repository_root()?;
-    let generated = assemble(&root)?;
     let path = root.join(OUTPUT);
 
     if check {
         let existing = std::fs::read_to_string(&path)
             .with_context(|| format!("{OUTPUT} is not there; run `cargo xtask third-party`"))?;
-        if existing != generated {
+        let (rust, javascript) = existing
+            .split_once(JAVASCRIPT)
+            .map(|(rust, js)| (rust.to_string(), format!("{JAVASCRIPT}{js}")))
+            .unwrap_or((existing.clone(), String::new()));
+        let stale = match only {
+            Some(Part::Rust) => rust != rust_part(&root)?,
+            Some(Part::Javascript) => javascript != javascript_part(&root)?,
+            None => existing != format!("{}{}", rust_part(&root)?, javascript_part(&root)?),
+        };
+        if stale {
             bail!(
                 "{OUTPUT} is out of date — a dependency changed. \
                  Run `cargo xtask third-party` and commit the result."
@@ -44,6 +71,7 @@ pub fn run(check: bool) -> Result<()> {
         return Ok(());
     }
 
+    let generated = format!("{}{}", rust_part(&root)?, javascript_part(&root)?);
     std::fs::write(&path, generated).with_context(|| format!("writing {}", path.display()))?;
     println!("wrote {}", path.display());
     Ok(())
@@ -64,7 +92,7 @@ fn repository_root() -> Result<PathBuf> {
 /// One licence and the crates under it.
 type ByLicence = BTreeMap<String, Vec<String>>;
 
-fn assemble(root: &Path) -> Result<String> {
+fn rust_part(root: &Path) -> Result<String> {
     let by_licence = licences(root)?;
 
     let mut out = String::new();
@@ -103,8 +131,10 @@ fn header() -> &'static str {
          `cargo xtask third-party`, which reads the dependency tree and \
          rewrites it. CI fails when it is out of date.\n\n\
          Booker itself is MIT licensed (see `LICENSE`). What a Booker \
-         build *contains* is listed below: the fonts it embeds and every \
-         Rust crate it is compiled from, with the licence each one carries. \
+         build *contains* is listed below: the fonts it embeds, every \
+         Rust crate it is compiled from, and the JavaScript packages \
+         bundled into the application window, with the licence each one \
+         carries. \
          A crate listed under several licences is offered under any of \
          them, at the user's choice, which is the usual Rust \
          dual-licensing.\n\n\
@@ -129,6 +159,90 @@ fn fonts(root: &Path) -> Result<String> {
          build. Their notices, copied from `{FONT_NOTICE}`:\n\n```\n{}\n```\n",
         notice.trim_end()
     ))
+}
+
+/// The JavaScript that ships inside the application window: the app's
+/// production dependencies and everything they pull in, as pnpm resolves
+/// them. Development tools — Vite, TypeScript, the Tauri CLI — build the
+/// window but are not in it, so they are not listed.
+fn javascript_part(root: &Path) -> Result<String> {
+    let app = root.join("app");
+    let output = Command::new("pnpm")
+        .args(["licenses", "list", "--prod", "--json"])
+        .current_dir(&app)
+        .output()
+        .context(
+            "running `pnpm licenses list`; the JavaScript half of the notices needs pnpm \
+             and an installed `app/node_modules` (`cd app && pnpm install`)",
+        )?;
+    if !output.status.success() {
+        bail!(
+            "pnpm licenses list failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    let by_licence = parse_pnpm(
+        &String::from_utf8(output.stdout).context("pnpm printed something that is not UTF-8")?,
+    )?;
+
+    let mut out = String::from(JAVASCRIPT);
+    out.push_str(
+        "\nThe window is a web page bundled into the application. These are \
+         the packages that end up in that bundle, grouped by licence, \
+         generated from `app/package.json`'s production dependencies. \
+         Source for each is on <https://www.npmjs.com>.\n\n",
+    );
+    let total: usize = by_licence.values().map(Vec::len).sum();
+    out.push_str(&format!(
+        "{} packages under {} licences.\n",
+        total,
+        by_licence.len()
+    ));
+    for (licence, packages) in &by_licence {
+        out.push_str(&format!("\n### {licence}\n\n"));
+        for name in packages {
+            out.push_str(&format!("- {name}\n"));
+        }
+    }
+    Ok(out)
+}
+
+/// Read `pnpm licenses list --json`: `{"<licence>": [{"name", "versions"},
+/// …], …}`.
+fn parse_pnpm(json: &str) -> Result<ByLicence> {
+    let value: serde_json::Value =
+        serde_json::from_str(json).context("pnpm printed something that is not JSON")?;
+    let object = value
+        .as_object()
+        .context("pnpm's licence list is not an object; has its format changed?")?;
+    let mut by_licence = ByLicence::new();
+    for (licence, packages) in object {
+        let packages = packages
+            .as_array()
+            .context("a pnpm licence entry is not a list")?;
+        let mut names = Vec::new();
+        for package in packages {
+            let name = package
+                .get("name")
+                .and_then(|name| name.as_str())
+                .context("a pnpm package has no name")?;
+            let versions = package
+                .get("versions")
+                .and_then(|versions| versions.as_array())
+                .map(|versions| {
+                    versions
+                        .iter()
+                        .filter_map(|v| v.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .unwrap_or_default();
+            names.push(format!("{name} {versions}").trim().to_string());
+        }
+        names.sort_unstable();
+        by_licence.insert(licence.clone(), names);
+    }
+    Ok(by_licence)
 }
 
 /// Ask `cargo deny` what is in the tree.
@@ -239,6 +353,19 @@ mod tests {
         // The worst outcome would be silently writing notices for nothing.
         assert!(parse(r#"{"something-else":[]}"#).is_err());
         assert!(parse("not json at all").is_err());
+    }
+
+    #[test]
+    fn reads_what_pnpm_prints() {
+        let json = r#"{"MIT":[{"name":"svelte","versions":["5.57.1"]},{"name":"crelt","versions":["1.0.7"]}],
+                       "Apache-2.0 OR MIT":[{"name":"@tauri-apps/api","versions":["2.11.1"]}]}"#;
+        let by_licence = parse_pnpm(json).unwrap();
+        assert_eq!(by_licence["MIT"], vec!["crelt 1.0.7", "svelte 5.57.1"]);
+        assert_eq!(
+            by_licence["Apache-2.0 OR MIT"],
+            vec!["@tauri-apps/api 2.11.1"]
+        );
+        assert!(parse_pnpm("[]").is_err());
     }
 
     #[test]

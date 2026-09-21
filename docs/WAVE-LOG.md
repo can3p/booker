@@ -18,6 +18,32 @@ Format:
 
 ---
 
+## Wave 2 — Write a simple book
+- Shipped: merged to `main` as PR #13. **No release**: distribution is paused (`docs/OPEN-QUESTIONS.md` Q-13), so there is no tag and `AGENTS.md` §4 criteria 5 and 6 were not checked.
+- Demo: `booker new the-moon --template novel`, write two chapters, and the PDF has a table of contents, chapters opening on right-hand pages with unnumbered blank versos, justified and hyphenated text, curly quotes, real dashes and page numbers on the outer corner — in one of four themes. In the window: a styled Markdown editor beside the pages, a click on a page opens its line, the cursor finds its page, chapters are added, renamed, moved and removed from the sidebar, and an outside edit meeting unsaved typing offers both versions. `booker check`, `booker where` and `booker page` print the same answers from a terminal.
+- Window walk-through by a person: **not yet done.** Everything the window does is covered by the store's and the session's tests, but the session that built this wave could not see the window (no screen-recording permission), so nothing about how it *looks* — the editor's styling, the conflict view, the zoom buttons, the cursor mark — has been seen. This line is written when somebody has done it.
+- Tracks: contracts (lead) · A document model · B codegen and typography · F templates and fonts · G tests and the command line · E project I/O · C editor and chapter tree · D preview · H tutorials — one session, sequentially, in the order the brief gives. B needed half of E (reading the new `book.toml` keys) and half of F (the fonts) before it could render anything, so those landed with it.
+- Deviations from the plan:
+  - **Literata is not bundled.** The default font list (Q-02) named it for novels; in Typst 0.15.1 its italic rendered upright. EB Garamond sets the `novel` and `poetry` themes instead. The four families add 7.4 MB to the binary.
+  - **`booker where` and `booker page` arrived five waves early**, as the CLI twins of click-to-source (the window may not answer a question the terminal cannot). Wave 7 adds phrase lookup and JSON on top; `docs/PLAN.md` says so.
+  - **`booker build` now reports layout problems as well**, in one list with the project's, and counts them in its exit code. Until now what laying out found reached the window and never the terminal — a gap in the rule that the CLI can print anything the window shows.
+  - **Removing a chapter deletes nothing.** The brief said "move the file to the system trash"; it takes the chapter out of `book.toml` and leaves the file, which needs no platform-specific dependency and cannot lose a writer's text. Renaming rewrites the chapter's first heading and keeps the file name.
+  - **Two themes keep the author's line breaks** (`poetry`, `picture-book`): Markdown would otherwise join the lines of a poem into a paragraph. Not in the contract; a theme value like the others, which Wave 3 can override.
+  - **Tables, strikethrough and `{=typst}` blocks** are laid out, and **a missing picture is a marked placeholder** rather than a book that fails to compile — the problem is still reported (`BK-REF-001`), the pages still appear.
+  - **The novel template stayed A5.** The brief said 5.5 × 8.5 in; A5 keeps tutorial 01's opening transcript, and the tutorial already teaches changing the size.
+  - **`SaveOutcome::Saved` boxes its project info**, after clippy objected to the contract as frozen; the JSON and the TypeScript are unchanged.
+- **What the wave found that it had not set out to fix:**
+  - `THIRD-PARTY.md` listed no JavaScript, although the window has bundled Svelte and Tauri's JavaScript since Wave 1. It now lists the 43 packages in the bundle, and CI checks that half in the `app` job.
+  - `booker build` printed "1 pages"; an unknown `--template` named `.` as the file at fault (`docs/FINDINGS.md`, Wave 0.6); a footnote reference inside a paragraph was silently dropped by the parser; the old codegen escaped quotes and hyphens, which is why every book had straight quotes. All fixed.
+  - Rendering the pages found what no test had: "spaced" paragraphs with no visible space, a list running into the next paragraph in indented prose, a novel template ending on a colon and nothing, and a scene-break glyph too small to see.
+- Deferred: the window walk-through above; a measured check that typing stays smooth in a 10,000-word chapter (the brief's done criterion for the editor, which needs the window); the JSON Schema, `explain` entries and recipes for the vocabulary this wave added (Wave 7 backfills them, as the brief says).
+- Compatibility (`AGENTS.md` §4 criterion 7): a `poetry` book made by this build, built by the Wave 1 build, lays out, reports `theme` as known-but-not-implemented, and leaves every file byte-identical; a Wave 1 book checks clean here and is left untouched too.
+- Update check: not applicable — distribution is paused (Q-13).
+- Agent surface: not applicable — Wave 7.
+- Findings recorded: five entries in `docs/FINDINGS.md` — Typst's variable-font bold and Literata's missing italic, paragraph spacing that replaces rather than adds to the line gap, `pulldown-cmark`'s span for an escaped bracket, what `typst-ide`'s click and cursor positions actually point at, and that the golden renders are deterministic.
+
+---
+
 ## Wave 1 — The application and how it reaches people
 - Shipped: 2026-09-20, merged to `main` as PR #9, with the release fixes in PRs #10 and #11. **Never released**: on 2026-09-21 the owner paused distribution (`docs/OPEN-QUESTIONS.md` Q-13), so the wave closed with no tag. The entry originally said `v0.2.0` had been released; it was written before the release step and merged before anyone ran it (see the deviations below).
 - Demo: from a source checkout, open a folder that contains a book, read its chapters, edit one and watch the pages redraw, break `book.toml` from another editor and watch the problem appear, export a PDF. The half of the planned demo about downloading an installer and watching it update itself was not performed (Q-13).

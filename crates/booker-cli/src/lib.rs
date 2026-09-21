@@ -10,9 +10,9 @@ pub mod engine;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use booker_core::{CompileRequest, CompileTarget};
+use booker_core::{CompileTarget, Diagnostic};
 use booker_project::{display_path, format_diagnostic, Project, Severity, Template};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
 #[command(name = "booker", version, about = "Author books that live in a folder")]
@@ -27,7 +27,7 @@ pub enum Command {
     New {
         /// Folder to create.
         path: PathBuf,
-        /// Starter template to use.
+        /// Starter template: novel, picture-book, poetry or paper.
         #[arg(long, default_value = "novel")]
         template: String,
         /// Title of the book. Taken from the folder name if not given.
@@ -39,6 +39,34 @@ pub enum Command {
         #[arg(default_value = ".")]
         project: PathBuf,
     },
+    /// Lay the book out and report every problem, writing nothing.
+    Check {
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// `human` to read, `json` for a program or an agent.
+        #[arg(long, value_enum, default_value_t = Format::Human)]
+        format: Format,
+    },
+    /// Say which page a line of a chapter landed on: `booker where content/01-the-jar.md:12`.
+    Where {
+        /// A chapter file and a line, and optionally a column: `FILE:LINE[:COLUMN]`.
+        location: String,
+        #[arg(default_value = ".")]
+        project: PathBuf,
+    },
+    /// Say which lines of which chapters are on a page: `booker page 3`.
+    Page {
+        /// The page, counted from 1 as a PDF viewer counts it.
+        number: u32,
+        #[arg(default_value = ".")]
+        project: PathBuf,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum Format {
+    Human,
+    Json,
 }
 
 /// What the process should exit with.
@@ -57,6 +85,9 @@ pub fn run(command: Command, out: &mut impl Write) -> anyhow::Result<i32> {
             title,
         } => new(&path, &template, title.as_deref(), out),
         Command::Build { project } => build(&project, out),
+        Command::Check { project, format } => check(&project, format, out),
+        Command::Where { location, project } => where_is(&project, &location, out),
+        Command::Page { number, project } => page(&project, number, out),
     }
 }
 
@@ -159,55 +190,227 @@ fn build(root: &Path, out: &mut impl Write) -> anyhow::Result<i32> {
         plural(images, "image")
     )?;
 
-    let errors = count(&project, Severity::Error);
-    let warnings = count(&project, Severity::Warning);
-    if project.diagnostics().is_empty() {
-        writeln!(out, "Problems: none")?;
-    } else {
-        writeln!(
-            out,
-            "Problems: {}, {}",
-            plural(errors, "error"),
-            plural(warnings, "warning")
-        )?;
-        for diagnostic in project.diagnostics() {
-            writeln!(out, "  {}", format_diagnostic(diagnostic))?;
-        }
-    }
-
     let output = engine::output_path(project.root(), &config.title);
-    let request = CompileRequest {
-        project: project.reference().clone(),
-        target: CompileTarget::Pdf,
-        revision: project.revision(),
-    };
-    let chapter_sources: Vec<(&str, &booker_doc::Document)> = project
-        .chapters()
-        .iter()
-        .map(|chapter| (chapter.source(), chapter.document()))
-        .collect();
-
-    match engine::compile(&request, config, &chapter_sources, &output) {
-        engine::Outcome::Compiled(result) => {
-            writeln!(
-                out,
-                "Built {} — {} pages in {} ms",
-                display_path(project.relative(&output)),
-                result.pages.len(),
-                result.duration_ms
-            )?;
+    let shown = display_path(project.relative(&output));
+    let (_engine, compilation) = match engine::lay_out(&project, CompileTarget::Pdf) {
+        Ok(laid_out) => laid_out,
+        Err(reason) => {
+            report(&problems(&project, &[]), out)?;
+            writeln!(out, "Could not build {shown}: {reason}")?;
+            return Ok(HAS_ERRORS);
         }
-        engine::Outcome::Failed(reason) => {
-            writeln!(
-                out,
-                "Could not build {}: {reason}",
-                display_path(project.relative(&output))
-            )?;
+    };
+
+    let problems = problems(&project, &compilation.result.diagnostics);
+    report(&problems, out)?;
+    if let Some(pdf) = &compilation.pdf {
+        if let Err(reason) = engine::write_pdf(pdf, &output) {
+            writeln!(out, "Could not build {shown}: {reason}")?;
             return Ok(HAS_ERRORS);
         }
     }
+    writeln!(
+        out,
+        "Built {shown} — {} in {} ms",
+        plural(compilation.result.pages.len(), "page"),
+        compilation.result.duration_ms
+    )?;
 
-    Ok(if project.has_errors() { HAS_ERRORS } else { OK })
+    Ok(exit_code(&problems))
+}
+
+/// `booker check`: everything `build` would report, and nothing written.
+///
+/// The problems are the same list the window's problems panel shows — what
+/// loading the project found, then what laying it out found — so a person,
+/// CI or an agent in a loop sees the same thing (`AGENTS.md` §6).
+fn check(root: &Path, format: Format, out: &mut impl Write) -> anyhow::Result<i32> {
+    let project = Project::load(root)?;
+    let layout = match engine::lay_out(&project, CompileTarget::Layout) {
+        Ok((_engine, compilation)) => compilation.result.diagnostics,
+        Err(reason) => anyhow::bail!("could not lay the book out: {reason}"),
+    };
+    let problems = problems(&project, &layout);
+    match format {
+        Format::Human => report(&problems, out)?,
+        Format::Json => {
+            serde_json::to_writer_pretty(&mut *out, &problems)?;
+            writeln!(out)?;
+        }
+    }
+    Ok(exit_code(&problems))
+}
+
+/// `booker where FILE:LINE[:COLUMN]`: the page or pages that line is on.
+fn where_is(root: &Path, location: &str, out: &mut impl Write) -> anyhow::Result<i32> {
+    let project = Project::load(root)?;
+    let (file, line, column) = parse_location(location)?;
+    let Some(index) = project
+        .chapters()
+        .iter()
+        .position(|chapter| display_path(chapter.relative_path()) == file)
+    else {
+        let chapters: Vec<String> = project
+            .chapters()
+            .iter()
+            .map(|chapter| display_path(chapter.relative_path()))
+            .collect();
+        anyhow::bail!(
+            "`{file}` is not a chapter of this book; its chapters are: {}",
+            chapters.join(", ")
+        );
+    };
+    let chapter = &project.chapters()[index];
+    let Some(offset) = chapter.offset_at(line, column) else {
+        anyhow::bail!("`{file}` has no line {line}");
+    };
+    let (engine, _compilation) =
+        engine::lay_out(&project, CompileTarget::Layout).map_err(anyhow::Error::msg)?;
+
+    let mut pages: Vec<u32> = engine
+        .pages_at(index, offset)
+        .into_iter()
+        .map(|point| point.page + 1)
+        .collect();
+    pages.sort_unstable();
+    pages.dedup();
+    let place = if column > 1 {
+        format!("{file}:{line}:{column}")
+    } else {
+        format!("{file}:{line}")
+    };
+    match pages.as_slice() {
+        [] => {
+            writeln!(out, "{place} is not on any page: nothing there is printed")?;
+            Ok(HAS_ERRORS)
+        }
+        [page] => {
+            writeln!(out, "{place} is on page {page}")?;
+            Ok(OK)
+        }
+        many => {
+            let list: Vec<String> = many.iter().map(u32::to_string).collect();
+            writeln!(out, "{place} is on pages {}", list.join(", "))?;
+            Ok(OK)
+        }
+    }
+}
+
+/// `booker page N`: which lines of which chapters are printed on page N.
+fn page(root: &Path, number: u32, out: &mut impl Write) -> anyhow::Result<i32> {
+    let project = Project::load(root)?;
+    let (engine, compilation) =
+        engine::lay_out(&project, CompileTarget::Layout).map_err(anyhow::Error::msg)?;
+    let total = compilation.result.pages.len();
+    let Some(sources) = number
+        .checked_sub(1)
+        .and_then(|index| engine.page_sources(index))
+    else {
+        anyhow::bail!(
+            "there is no page {number}; the book has {}",
+            plural(total, "page")
+        );
+    };
+
+    // First and last line per chapter, in the order the chapters appear.
+    let mut ranges: Vec<(usize, u32, u32)> = Vec::new();
+    for (chapter, offset) in sources {
+        let line = project.chapters()[chapter]
+            .location(booker_doc::Span::new(offset, offset))
+            .line;
+        match ranges.iter_mut().find(|(c, _, _)| *c == chapter) {
+            Some((_, first, last)) => {
+                *first = (*first).min(line);
+                *last = (*last).max(line);
+            }
+            None => ranges.push((chapter, line, line)),
+        }
+    }
+
+    if ranges.is_empty() {
+        writeln!(out, "Page {number} has no text from any chapter on it")?;
+        return Ok(OK);
+    }
+    writeln!(out, "Page {number} shows:")?;
+    for (chapter, first, last) in ranges {
+        let file = display_path(project.chapters()[chapter].relative_path());
+        if first == last {
+            writeln!(out, "  {file}:{first}")?;
+        } else {
+            writeln!(out, "  {file}:{first}–{last}")?;
+        }
+    }
+    Ok(OK)
+}
+
+/// `content/01.md:12` or `content/01.md:12:5`.
+fn parse_location(location: &str) -> anyhow::Result<(String, u32, u32)> {
+    let mut parts = location.rsplitn(3, ':').collect::<Vec<_>>();
+    parts.reverse();
+    let bad = || {
+        anyhow::anyhow!(
+            "`{location}` is not a place in a chapter; write the file and the line, \
+             like `content/01-the-jar.md:12`"
+        )
+    };
+    let number = |text: &str| text.parse::<u32>().ok().filter(|n| *n > 0);
+    match parts.as_slice() {
+        [file, line, column] if number(line).is_some() && number(column).is_some() => Ok((
+            file.replace('\\', "/"),
+            number(line).ok_or_else(bad)?,
+            number(column).ok_or_else(bad)?,
+        )),
+        [file, line, column] if number(column).is_some() => Ok((
+            format!("{file}:{line}").replace('\\', "/"),
+            number(column).ok_or_else(bad)?,
+            1,
+        )),
+        [file, line] => Ok((file.replace('\\', "/"), number(line).ok_or_else(bad)?, 1)),
+        _ => Err(bad()),
+    }
+}
+
+/// What loading found and what laying out found, in one list, ordered by
+/// file and line — the order a person fixes things in.
+fn problems(project: &Project, layout: &[Diagnostic]) -> Vec<Diagnostic> {
+    let mut all: Vec<Diagnostic> = project.diagnostics().to_vec();
+    all.extend(layout.iter().cloned());
+    all.sort_by(|a, b| {
+        let key = |d: &Diagnostic| {
+            d.source
+                .as_ref()
+                .map(|s| (0, display_path(&s.file), s.line, s.column))
+                .unwrap_or((1, String::new(), 0, 0))
+        };
+        key(a).cmp(&key(b))
+    });
+    all
+}
+
+fn report(problems: &[Diagnostic], out: &mut impl Write) -> anyhow::Result<()> {
+    if problems.is_empty() {
+        writeln!(out, "Problems: none")?;
+        return Ok(());
+    }
+    let count = |severity| problems.iter().filter(|d| d.severity == severity).count();
+    writeln!(
+        out,
+        "Problems: {}, {}",
+        plural(count(Severity::Error), "error"),
+        plural(count(Severity::Warning), "warning")
+    )?;
+    for diagnostic in problems {
+        writeln!(out, "  {}", format_diagnostic(diagnostic))?;
+    }
+    Ok(())
+}
+
+fn exit_code(problems: &[Diagnostic]) -> i32 {
+    if problems.iter().any(|d| d.severity == Severity::Error) {
+        HAS_ERRORS
+    } else {
+        OK
+    }
 }
 
 /// `1 word`, `2 words` — a message that says "1 headings" reads as a bug.
@@ -217,12 +420,4 @@ fn plural(count: usize, noun: &str) -> String {
     } else {
         format!("{count} {noun}s")
     }
-}
-
-fn count(project: &Project, severity: Severity) -> usize {
-    project
-        .diagnostics()
-        .iter()
-        .filter(|diagnostic| diagnostic.severity == severity)
-        .count()
 }

@@ -47,7 +47,7 @@ notify-debouncer-full = "0.7"
 
 # Wave 0 track C (booker-typst). The Typst version is pinned exactly: Typst is
 # pre-1.0, its layout changes between releases, and the golden suite is what
-# gates an upgrade. Bump these five together, never one of them.
+# gates an upgrade. Bump these together, never one of them.
 comemo = "0.5"
 typst = "=0.15.1"
 typst-kit = { version = "=0.15.1", default-features = false, features = ["datetime"] }
@@ -55,3 +55,6 @@ typst-layout = "=0.15.1"
 typst-pdf = "=0.15.1"
 typst-render = "=0.15.1"
 typst-svg = "=0.15.1"
+# Wave 2: from a click on a page to the source, and back (`jump_from_click`,
+# `jump_from_cursor`). Pinned with the rest of Typst.
+typst-ide = "=0.15.1"

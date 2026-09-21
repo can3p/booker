@@ -16,10 +16,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import type { ChapterText } from "./bindings/ChapterText";
+import type { PagePoint } from "./bindings/PagePoint";
 import type { CompileResult } from "./bindings/CompileResult";
 import type { ProjectChanged } from "./bindings/ProjectChanged";
 import type { ProjectInfo } from "./bindings/ProjectInfo";
 import type { Revision } from "./bindings/Revision";
+import type { SaveOutcome } from "./bindings/SaveOutcome";
+import type { SourceLocation } from "./bindings/SourceLocation";
 
 /** Open a project folder. The project's own faults come back inside the
  *  answer, in `diagnostics`; a rejected promise means the folder itself
@@ -68,9 +71,49 @@ export function readChapter(path: string): Promise<ChapterText> {
   return invoke<ChapterText>("read_chapter", { path });
 }
 
-/** Write a chapter back. What comes back describes the book as it now is. */
-export function saveChapter(path: string, text: string): Promise<ProjectInfo> {
-  return invoke<ProjectInfo>("save_chapter", { path, text });
+/** Write a chapter back. `base` is the text the editor last loaded or
+ *  saved: when the file on disk is no longer that, someone else changed it,
+ *  nothing is written, and the answer is a conflict carrying both versions. */
+export function saveChapter(path: string, text: string, base: string): Promise<SaveOutcome> {
+  return invoke<SaveOutcome>("save_chapter", { path, text, base });
+}
+
+/** Add a chapter after `after` (or at the end), titled `title`, containing
+ *  `text` (or just its title). Returns its path and the book as it now is. */
+export function addChapter(
+  after: string | null,
+  title: string,
+  text: string | null = null,
+): Promise<[string, ProjectInfo]> {
+  return invoke<[string, ProjectInfo]>("add_chapter", { after, title, text });
+}
+
+/** Move a chapter to `index` in the reading order. */
+export function moveChapter(path: string, index: number): Promise<ProjectInfo> {
+  return invoke<ProjectInfo>("move_chapter", { path, index });
+}
+
+/** Take a chapter out of the book. Its file stays in the folder. */
+export function removeChapter(path: string): Promise<ProjectInfo> {
+  return invoke<ProjectInfo>("remove_chapter", { path });
+}
+
+/** Give a chapter a new title: its first heading is rewritten. */
+export function renameChapter(path: string, title: string): Promise<ProjectInfo> {
+  return invoke<ProjectInfo>("rename_chapter", { path, title });
+}
+
+/** Click-to-source: the place in a chapter that produced what is drawn at
+ *  `point`, or null for a margin, a page number, the contents. Answered
+ *  from the last layout. */
+export function sourceAt(point: PagePoint): Promise<SourceLocation | null> {
+  return invoke<SourceLocation | null>("source_at", { point });
+}
+
+/** Cursor-to-page: where a place in a chapter landed — usually one point,
+ *  none when nothing there is printed. */
+export function pagesAt(location: SourceLocation): Promise<PagePoint[]> {
+  return invoke<PagePoint[]>("pages_at", { location });
 }
 
 /** Read the project from disk again, after something outside changed it.
@@ -96,9 +139,9 @@ export function pageImageUrl(
   return `booker://page/${revision}/${page}@${scale}x.${format}`;
 }
 
-/** The project on disk has moved on — an agent, another editor, a checkout.
- *  Wave 1 track C is what starts emitting this; the listener is here so the
- *  window is already written to expect it. */
+/** The project on disk has moved on — an agent, another editor, a checkout,
+ *  or the echo of a write this window made. The watcher coalesces a burst
+ *  of changes into one of these. */
 export function onProjectChanged(
   handler: (changed: ProjectChanged) => void,
 ): Promise<UnlistenFn> {

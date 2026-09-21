@@ -71,6 +71,22 @@ Next:
 leave `--title` out, Booker makes a title out of the folder name — `the-moon-jar` would
 become *The Moon Jar* — which is usually close enough to start with.
 
+The book starts from a *template*. `novel` is the one you get without asking, and the
+right one for this book: chapters, flowing text, a table of contents. There are three
+more — `picture-book` for a square book with a picture and a few big lines on each
+page, `poetry` for poems that keep their line breaks, and `paper` for an essay or a
+report — and you choose one with `--template`. Get the name slightly wrong and Booker
+says what it has rather than guessing:
+
+```console
+$ booker new my-poems --template poem
+booker: there is no template called `poem`; the templates are: novel, picture-book, poetry, paper — did you mean `poetry`?
+$ echo $?
+2
+```
+
+Nothing was created: the exit code `2` means the command could not run at all.
+
 That folder is now your book, and it is the whole book. There is no database, no
 hidden file somewhere else, nothing you can lose by moving it. Step inside it:
 
@@ -102,10 +118,10 @@ $ booker build .
 The Moon in a Jar — format 1, language en
 Page 148mm × 210mm, facing, margins 18mm/20mm/20mm/15mm
 Chapters: 1
-  content/01-the-first-chapter.md  67 words, 1 heading, 0 images   “The First Chapter”
-  67 words and 0 images in all
+  content/01-the-first-chapter.md  74 words, 1 heading, 0 images   “The First Chapter”
+  74 words and 0 images in all
 Problems: none
-Built build/the-moon-in-a-jar.pdf — 1 pages in … ms
+Built build/the-moon-in-a-jar.pdf — 1 page in … ms
 ```
 
 The `.` means "the book in this folder". You can also stand outside the folder and
@@ -248,20 +264,34 @@ Chapters: 2
   content/02-the-walk-home.md      83 words, 1 heading, 0 images   “The Walk Home”
   168 words and 0 images in all
 Problems: none
-Built build/the-moon-in-a-jar.pdf — 2 pages in … ms
+Built build/the-moon-in-a-jar.pdf — 5 pages in … ms
 ```
 
-Two chapters, two pages, your words. Open the PDF again and look at it. Each chapter
-starts on its own page, with its title set larger and bolder than the text. Paragraphs
-are separated by a little space rather than run together. The lines are justified —
-straight down both edges — and long words are hyphenated to make that work, which is
-why `language` matters. The lists and the quotation you wrote came out as a list and a
-quotation.
+Two chapters, five pages. Open the PDF again and look at it, because it now looks like
+a book rather than a printout:
 
-Now hold the two pages side by side. The white space is wider on the *left* of page one
-and wider on the *right* of page two: that is `facing = true` doing its job, putting the
-generous `inside` margin against the spine on both. Nobody set any of that up. They are
-the defaults, and they are meant to be good enough that you never think about them.
+- **Page 1 is a table of contents**, listing both chapters with the page each starts on.
+  A book with more than one chapter gets one without being asked.
+- **Each chapter starts on a right-hand page**, the way printed novels do. When the page
+  before a chapter would otherwise be a right-hand one, Booker leaves a blank left-hand
+  page in between — that is what pages 2 and 4 are. A blank page carries no page number.
+- **Chapter titles are dropped** a little way down the page, centred and larger than
+  the text.
+- **The text is set as prose.** The first paragraph of a chapter starts flush; every
+  paragraph after it has its first line indented, with no gap between paragraphs. The
+  lines are justified — straight down both edges — and long words are hyphenated to make
+  that work, which is why `language` matters.
+- **Your punctuation is typeset.** The straight `"` you typed became curly “ and ”, an
+  apostrophe becomes ’, and if you type two hyphens `--` you get an en dash (–) and three
+  `---` an em dash (—).
+- The list and the quotation you wrote came out as a list and a quotation, and the page
+  numbers sit on the outer corner of each page.
+
+Now look at pages 3 and 5, the chapter openings. Both are right-hand pages, and the white
+space is wider on their *left*, against the spine: that is `facing = true` doing its job,
+putting the generous `inside` margin where the book is bound. Nobody set any of that up.
+It all comes from the book's *theme* — `novel`, unless you choose another — and the
+defaults are meant to be good enough that you never think about them.
 
 ## 6. Change the shape of the page
 
@@ -300,7 +330,7 @@ Chapters: 2
   content/02-the-walk-home.md      83 words, 1 heading, 0 images   “The Walk Home”
   168 words and 0 images in all
 Problems: none
-Built build/the-moon-in-a-jar.pdf — 2 pages in … ms
+Built build/the-moon-in-a-jar.pdf — 5 pages in … ms
 ```
 
 The page line changed and the book re-flowed to fit. You can mix units freely — `mm`
@@ -355,7 +385,7 @@ Chapters: 2
   168 words and 0 images in all
 Problems: 0 errors, 1 warning
   book.toml:5:1: warning[BK-FORMAT-005] unknown key `auther`; it is being kept unchanged — did you mean `author`?
-Built build/the-moon-in-a-jar.pdf — 2 pages in … ms
+Built build/the-moon-in-a-jar.pdf — 5 pages in … ms
 ```
 
 Everything worth noticing is in that one line:
@@ -410,7 +440,7 @@ Chapters: 2
 Problems: 1 error, 1 warning
   book.toml:5:1: warning[BK-FORMAT-005] unknown key `auther`; it is being kept unchanged — did you mean `author`?
   book.toml:10:5: error[BK-REF-002] chapter `content/03-the-lid.md` is listed but the file is not there
-Built build/the-moon-in-a-jar.pdf — 2 pages in … ms
+Built build/the-moon-in-a-jar.pdf — 5 pages in … ms
 $ echo $?
 1
 ```
@@ -424,6 +454,24 @@ clean book gives you `0`, a book with errors gives you `1`.
 Worth keeping straight: a **warning** is something Booker thinks you should look at, and
 an **error** is something that will make the book come out wrong. Both are listed, both
 name a file and a line, and neither stops you from getting a PDF.
+
+### Check without building
+
+`booker build` always writes the PDF. When all you want to know is whether anything is
+wrong — before you send the book to someone, or over and over while you fix things —
+`booker check` lays the book out, reports, and writes nothing:
+
+```console
+$ booker check .
+Problems: 1 error, 1 warning
+  book.toml:5:1: warning[BK-FORMAT-005] unknown key `auther`; it is being kept unchanged — did you mean `author`?
+  book.toml:10:5: error[BK-REF-002] chapter `content/03-the-lid.md` is listed but the file is not there
+$ echo $?
+1
+```
+
+The same problems, the same `1`. Add `--format json` and the same list comes out in a
+form a program can read — which is what an assistant working in your book folder uses.
 
 ### Put it back
 
@@ -461,12 +509,35 @@ Chapters: 2
   content/02-the-walk-home.md      83 words, 1 heading, 0 images   “The Walk Home”
   168 words and 0 images in all
 Problems: none
-Built build/the-moon-in-a-jar.pdf — 2 pages in … ms
+Built build/the-moon-in-a-jar.pdf — 5 pages in … ms
 $ echo $?
 0
 ```
 
 `Problems: none`, and `0`. You have written a book.
+
+## 8. Find a line on the page, and a page in the text
+
+A book reflows, so "the second paragraph of chapter two" does not stay on the same page
+for long. Two commands answer the question either way round. Which page is line 7 of
+the second chapter on?
+
+```console
+$ booker where content/02-the-walk-home.md:7
+content/02-the-walk-home.md:7 is on page 5
+```
+
+And what is on page 3?
+
+```console
+$ booker page 3
+Page 3 shows:
+  content/01-the-jar.md:1–13
+```
+
+Page 3 is the whole of the first chapter, lines 1 to 13 of its file. Ask about page 4 and
+Booker says it has no text on it: it is the blank page left so that the next chapter
+starts on the right.
 
 ## When something else goes wrong
 
@@ -502,12 +573,12 @@ explaining what each file is and what not to touch.
 
 ## What Booker cannot do yet
 
-Honesty is more useful here than enthusiasm. Today Booker is a command you run in a
-terminal, and this tutorial covers essentially all of it. **There is no application
-window, no live preview, no styling beyond page size and margins, no control over
-fonts, no cover, no table of contents, no HTML or EPUB output, and no way to place an
-image at a particular spot on a page.** Images in `assets/images/` can be referenced
-from Markdown and will appear in the flow of the text, but nothing more.
+Honesty is more useful here than enthusiasm. This tutorial covers essentially
+everything the `booker` command does; [the next one](02-the-app.md) does the same in
+Booker's window, with a live preview. **There is no styling beyond the built-in theme,
+page size and margins, no choice of fonts, no cover, no HTML or EPUB output, and no way
+to place an image at a particular spot on a page.** Images in `assets/images/` can be
+referenced from Markdown and will appear in the flow of the text, but nothing more.
 
 All of that is being built, and each piece arrives with a tutorial of its own — see
 [`index.md`](index.md) for the list as it grows, and

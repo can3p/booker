@@ -307,3 +307,185 @@ fn chapters_fall_back_to_content_in_file_name_order() {
         "sorted by name, and only Markdown"
     );
 }
+
+/// A book in a temporary folder with one chapter, for rules that are about
+/// what a chapter says rather than about the fixture's broken files.
+fn book_with_chapter(text: &str) -> (tempfile::TempDir, Project) {
+    let folder = tempfile::tempdir().unwrap();
+    std::fs::write(folder.path().join("book.toml"), "title = \"T\"\n").unwrap();
+    std::fs::create_dir(folder.path().join("content")).unwrap();
+    std::fs::write(folder.path().join("content/01.md"), text).unwrap();
+    let project = Project::load(folder.path()).unwrap();
+    (folder, project)
+}
+
+#[test]
+fn an_attribute_nothing_reads_is_a_warning_that_suggests_the_right_key() {
+    let (_folder, project) =
+        book_with_chapter("# One {break-befor=page}\n\n![Cat](cat.png){widht=50%}\n");
+    let found = find(&project, rules::UNKNOWN_ATTRIBUTE);
+    assert_eq!(found.len(), 2, "{found:#?}");
+    assert!(found.iter().all(|d| d.severity == Severity::Warning));
+    assert!(
+        found[0].message.contains("Did you mean `break-before`"),
+        "{}",
+        found[0].message
+    );
+    let source = found[0].source.as_ref().unwrap();
+    assert_eq!(
+        (source.line, source.column),
+        (1, 7),
+        "points at the braces, not the heading"
+    );
+    assert!(found[1].message.contains("Did you mean `width`"));
+}
+
+#[test]
+fn markdown_that_is_kept_but_not_laid_out_is_reported_where_it_is() {
+    let (_folder, project) = book_with_chapter(
+        "Text.[^1]\n\n<div>raw</div>\n\n<!-- a note to self -->\n\n[^1]: The note.\n",
+    );
+    let found = find(&project, rules::NOT_LAID_OUT);
+    let lines: Vec<(u32, &str)> = found
+        .iter()
+        .map(|d| (d.source.as_ref().unwrap().line, d.message.as_str()))
+        .collect();
+    assert_eq!(
+        found.len(),
+        3,
+        "reference, HTML, definition — not the comment: {lines:#?}"
+    );
+    assert!(lines[0].1.starts_with("a footnote reference"), "{lines:#?}");
+    assert_eq!(lines[1].0, 3);
+    assert!(lines[1].1.starts_with("HTML"));
+    assert!(lines[2].1.starts_with("a footnote"));
+}
+
+fn book_with_config(toml: &str) -> (tempfile::TempDir, Project) {
+    let folder = tempfile::tempdir().unwrap();
+    std::fs::write(folder.path().join("book.toml"), toml).unwrap();
+    std::fs::write(folder.path().join("book.md"), "# One\n").unwrap();
+    let project = Project::load(folder.path()).unwrap();
+    (folder, project)
+}
+
+#[test]
+fn a_theme_that_does_not_exist_names_the_ones_that_do() {
+    let (_folder, project) = book_with_config("title = \"T\"\ntheme = \"novle\"\n");
+    let found = find(&project, rules::UNKNOWN_THEME);
+    assert_eq!(found.len(), 1);
+    assert!(
+        found[0].message.contains("did you mean `novel`?"),
+        "{}",
+        found[0].message
+    );
+    assert!(found[0]
+        .message
+        .contains("novel, picture-book, poetry, paper"));
+    assert_eq!(found[0].source.as_ref().unwrap().line, 2);
+    assert_eq!(
+        project.config().theme(),
+        "novel",
+        "and the book still lays out"
+    );
+}
+
+#[test]
+fn the_wave_2_tables_are_read_and_their_mistakes_located() {
+    let (_folder, project) = book_with_config(
+        "title = \"T\"\ntheme = \"poetry\"\n\n[toc]\ndepth = 7\ntitel = \"x\"\n\n[chapter]\nstart = \"rigth-page\"\n",
+    );
+    assert_eq!(project.config().theme(), "poetry");
+    assert_eq!(project.config().toc.depth, None, "a bad depth falls back");
+    let all: Vec<String> = project
+        .diagnostics()
+        .iter()
+        .map(booker_project::format_diagnostic)
+        .collect();
+    let all = all.join("\n");
+    assert!(
+        all.contains("book.toml:5:9:") && all.contains("`toc.depth` should be 1, 2 or 3"),
+        "{all}"
+    );
+    assert!(
+        all.contains("unknown key `toc.titel`") && all.contains("did you mean `toc.title`?"),
+        "{all}"
+    );
+    assert!(
+        all.contains("book.toml:9:9:") && all.contains("did you mean `right-page`?"),
+        "{all}"
+    );
+    assert!(
+        !all.contains("not implemented"),
+        "theme, toc and chapter are implemented now: {all}"
+    );
+}
+
+fn book_with_chapters(chapters: &[(&str, &str)]) -> (tempfile::TempDir, Project) {
+    let folder = tempfile::tempdir().unwrap();
+    std::fs::write(folder.path().join("book.toml"), "title = \"T\"\n").unwrap();
+    std::fs::create_dir(folder.path().join("content")).unwrap();
+    for (name, text) in chapters {
+        std::fs::write(folder.path().join("content").join(name), text).unwrap();
+    }
+    let project = Project::load(folder.path()).unwrap();
+    (folder, project)
+}
+
+#[test]
+fn a_link_to_an_id_that_exists_nowhere_is_located_and_the_nearest_suggested() {
+    let (_folder, project) = book_with_chapters(&[
+        ("01.md", "# The Garden {#garden}\n"),
+        (
+            "02.md",
+            "Back in [the garden](#gardn), and [elsewhere](#nowhere-at-all).\n",
+        ),
+    ]);
+    let found = find(&project, rules::UNRESOLVED_LINK);
+    assert_eq!(found.len(), 2, "{found:#?}");
+    let source = found[0].source.as_ref().unwrap();
+    assert_eq!(source.file, Path::new("content/02.md"));
+    assert_eq!((source.line, source.column), (1, 9));
+    assert!(
+        found[0].message.contains("Did you mean `#garden`?"),
+        "{}",
+        found[0].message
+    );
+    assert!(
+        !found[1].message.contains("Did you mean"),
+        "{}",
+        found[1].message
+    );
+}
+
+#[test]
+fn an_id_used_twice_points_at_the_second_and_names_the_first() {
+    let (_folder, project) = book_with_chapters(&[
+        ("01.md", "# The Garden {#garden}\n"),
+        ("02.md", "Text.\n\n## Another Garden {#garden}\n"),
+    ]);
+    let found = find(&project, rules::DUPLICATE_ID);
+    assert_eq!(found.len(), 1, "{found:#?}");
+    assert_eq!(
+        found[0].source.as_ref().unwrap().file,
+        Path::new("content/02.md")
+    );
+    assert!(
+        found[0].message.contains("content/01.md:1"),
+        "{}",
+        found[0].message
+    );
+}
+
+#[test]
+fn a_chapter_that_prints_nothing_is_a_warning() {
+    let (_folder, project) =
+        book_with_chapters(&[("01.md", "# One\n"), ("02.md", "<!-- to do -->\n")]);
+    let found = find(&project, rules::EMPTY_CHAPTER);
+    assert_eq!(found.len(), 1, "{found:#?}");
+    assert_eq!(found[0].severity, Severity::Warning);
+    assert_eq!(
+        found[0].source.as_ref().unwrap().file,
+        Path::new("content/02.md")
+    );
+}

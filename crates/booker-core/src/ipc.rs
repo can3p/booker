@@ -28,12 +28,22 @@ use crate::project::{BookConfig, ProjectRef, Revision};
 
 /// Names of the commands the app exposes. Keep them sorted; add, never
 /// renumber or reuse.
+///
+/// Wave 2's contracts step added six, in its contracts commit: the chapter
+/// tree's four writes (`add_chapter`, `move_chapter`, `remove_chapter`,
+/// `rename_chapter`) — writes rather than questions about a book, so they
+/// need no CLI twin (see the module comment) — and click-to-source in both
+/// directions (`pages_at`, `source_at`), which do: `booker where` and
+/// `booker page`.
 pub const COMMANDS: &[&str] = &[
+    "add_chapter",
     "close_project",
     "compile",
     "export_pdf",
+    "move_chapter",
     "open_project",
     "page_image_url",
+    "pages_at",
     "project_info",
     "read_chapter",
     "recent_projects",
@@ -41,8 +51,11 @@ pub const COMMANDS: &[&str] = &[
     // says *that* the folder changed, and this says what the book now is
     // (`AGENTS.md` §3 — the list grows by appending, never by renumbering).
     "reload_project",
+    "remove_chapter",
+    "rename_chapter",
     "render_page",
     "save_chapter",
+    "source_at",
 ];
 
 /// Names of the events the core pushes at the UI, rather than answering when
@@ -116,6 +129,30 @@ pub struct ChapterText {
     /// the app must offer both versions rather than discard one
     /// (`AGENTS.md` §7).
     pub revision: Revision,
+}
+
+/// What happened to a save.
+///
+/// A save never overwrites a file whose content is not what the editor
+/// loaded: that would silently discard an edit made from outside — another
+/// editor, an agent, a branch checkout (`AGENTS.md` §7). The comparison is
+/// by content, not by revision, because the revision moves for any change
+/// to the folder and a change to a different chapter is no conflict with
+/// this one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "outcome", rename_all = "kebab-case")]
+#[ts(export, export_to = "../../../app/src/lib/bindings/")]
+pub enum SaveOutcome {
+    /// Written; this is the project as it now is.
+    Saved { info: Box<ProjectInfo> },
+    /// The file changed underneath the editor. Nothing was written, and the
+    /// person chooses: keep theirs, take the one on disk, or keep both.
+    Conflict {
+        /// What is on disk now.
+        disk: ChapterText,
+        /// What the editor tried to save.
+        mine: String,
+    },
 }
 
 /// Where an export should land. The app asks the user; the CLI computes it

@@ -74,9 +74,90 @@ pub struct BookConfig {
     pub chapters: Vec<PathBuf>,
     #[serde(default)]
     pub page: PageConfig,
+    /// A built-in bundle of typographic defaults (`THEMES`). Absent means
+    /// [`DEFAULT_THEME`]; a name that is not built in is a diagnostic and the
+    /// default is used, so a typo never stops a book from opening.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<String>,
+    #[serde(default)]
+    pub toc: TocConfig,
+    #[serde(default)]
+    pub chapter: ChapterConfig,
     #[serde(flatten, default, skip_serializing_if = "BTreeMap::is_empty")]
     #[ts(type = "Record<string, unknown>")]
     pub extra: BTreeMap<String, toml::Value>,
+}
+
+/// The themes built into this build, in the order `booker new --help` and a
+/// "did you mean" list them. Each is the typographic starting point of the
+/// template with the same name; Wave 3's `styles.toml` overrides any value
+/// in it.
+pub const THEMES: &[&str] = &["novel", "picture-book", "poetry", "paper"];
+
+/// The theme a book without a `theme` key gets.
+pub const DEFAULT_THEME: &str = "novel";
+
+/// `[toc]`: the table of contents.
+///
+/// Every field is optional, because the right default depends on the book:
+/// a one-chapter book does not want a contents page, and the title of one
+/// depends on the language.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../app/src/lib/bindings/")]
+pub struct TocConfig {
+    /// Absent: a table of contents when the book has more than one chapter
+    /// and its theme lists chapters at all.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    /// Heading levels listed, 1 to 3. Absent: 1, chapters only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub depth: Option<u8>,
+    /// Absent: "Contents" in the book's language.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(flatten, default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[ts(type = "Record<string, unknown>")]
+    pub extra: BTreeMap<String, toml::Value>,
+}
+
+/// `[chapter]`: how one chapter follows another.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../app/src/lib/bindings/")]
+pub struct ChapterConfig {
+    /// Absent: whatever the theme does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start: Option<ChapterStart>,
+    #[serde(flatten, default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[ts(type = "Record<string, unknown>")]
+    pub extra: BTreeMap<String, toml::Value>,
+}
+
+/// Where a chapter begins.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "kebab-case")]
+#[ts(export, export_to = "../../../app/src/lib/bindings/")]
+pub enum ChapterStart {
+    /// On the next page.
+    NewPage,
+    /// On the next right-hand (odd) page, leaving a blank page when needed —
+    /// as printed novels do.
+    RightPage,
+    /// Straight after the previous chapter, on the same page.
+    Continue,
+}
+
+impl ChapterStart {
+    /// Every value, spelled as `book.toml` spells it, for "did you mean".
+    pub const NAMES: &'static [&'static str] = &["new-page", "right-page", "continue"];
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "new-page" => Some(Self::NewPage),
+            "right-page" => Some(Self::RightPage),
+            "continue" => Some(Self::Continue),
+            _ => None,
+        }
+    }
 }
 
 fn default_format() -> u32 {
@@ -92,6 +173,15 @@ impl BookConfig {
     /// the user can act on; too old is a migration, never a refusal.
     pub fn is_supported(&self) -> bool {
         self.format <= FORMAT_VERSION
+    }
+
+    /// The theme in effect: the one named, when it is built in, and
+    /// [`DEFAULT_THEME`] otherwise.
+    pub fn theme(&self) -> &str {
+        match self.theme.as_deref() {
+            Some(name) if THEMES.contains(&name) => name,
+            _ => DEFAULT_THEME,
+        }
     }
 }
 
@@ -191,6 +281,48 @@ mod tests {
         assert_eq!(config.page.bleed.unwrap().to_string(), "3mm");
         let (w, _) = config.page.size.dimensions();
         assert!((w.to_mm() - 215.9).abs() < 1e-9);
+    }
+
+    #[test]
+    fn reads_the_wave_2_tables() {
+        let config: BookConfig = toml::from_str(
+            r#"
+            title = "Mia"
+            theme = "poetry"
+
+            [toc]
+            depth = 2
+
+            [chapter]
+            start = "right-page"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(config.theme(), "poetry");
+        assert_eq!(config.toc.depth, Some(2));
+        assert_eq!(config.toc.enabled, None, "absent means decided by the book");
+        assert_eq!(config.chapter.start, Some(ChapterStart::RightPage));
+    }
+
+    #[test]
+    fn an_unknown_theme_falls_back_to_the_default() {
+        let config: BookConfig = toml::from_str(
+            r#"
+            title = "Mia"
+            theme = "novle"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(config.theme(), DEFAULT_THEME);
+    }
+
+    #[test]
+    fn chapter_start_names_round_trip() {
+        for name in ChapterStart::NAMES {
+            let start = ChapterStart::from_name(name).unwrap();
+            let json = serde_json::to_value(start).unwrap();
+            assert_eq!(json, *name);
+        }
     }
 
     #[test]

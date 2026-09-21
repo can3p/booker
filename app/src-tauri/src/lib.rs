@@ -38,16 +38,22 @@ pub fn run() {
             protocol::handle(context.app_handle(), request)
         })
         .invoke_handler(tauri::generate_handler![
+            commands::add_chapter,
             commands::close_project,
             commands::compile,
             commands::export_pdf,
+            commands::move_chapter,
             commands::open_project,
+            commands::pages_at,
             commands::project_info,
             commands::read_chapter,
             commands::recent_projects,
             commands::reload_project,
+            commands::remove_chapter,
+            commands::rename_chapter,
             commands::render_page,
             commands::save_chapter,
+            commands::source_at,
         ])
         .run(tauri::generate_context!())
         .expect("the application failed to start");

@@ -10,6 +10,29 @@ over it (`AGENTS.md` §3).
 
 ## Unreleased
 
+Nothing here has been published: Booker is developed locally for now.
+
+### Added
+- **Four templates**: `booker new --template novel | picture-book | poetry | paper`,
+  each with sample text that explains itself, and each typeset by its own built-in
+  theme — chosen with `theme` in `book.toml`.
+- **Books that look like books, with no settings**: a table of contents, chapters
+  starting on right-hand pages, page numbers, justified and hyphenated text, curly
+  quotes, real dashes, scene breaks. `[toc]` and `[chapter] start` in `book.toml`
+  change what you want changed.
+- **More Markdown**: pictures with a width, tables, strikethrough, page breaks,
+  links between chapters, and `{#name}` to name a heading or a passage.
+- **`booker check`** reports every problem without building; `booker where` says
+  which page a line is on, and `booker page` which lines a page shows.
+- **In the window**: a Markdown editor that styles as you type; click a page to jump
+  to its text, and the pages follow the cursor; add, rename, move and remove chapters;
+  when a chapter changes on disk while you are typing, both versions are offered.
+
+### Changed
+- `booker build` also reports problems found while laying the book out.
+- Removing a chapter never deletes its file.
+
+
 ## v0.2.0 — the application (not published: distribution is paused)
 
 The first installable Booker.

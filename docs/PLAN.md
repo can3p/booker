@@ -354,18 +354,15 @@ The desktop application and the release pipeline: a window that opens a book fol
 
 Three decisions taken there that constrain what follows: there is exactly one translation from a book to pages (`booker_typst::book`, behind `Engine::set_book`) and both the window and the CLI go through it; the application keeps one engine per open project, because the memoized compiler is what makes the preview incremental; and an outside change to the folder is a reload, never a merge, because everything the window holds is derived from files that something else may have rewritten.
 
-### Wave 2: "Write a simple book" (MVP)
-**Demo:** create a novel from a template, write chapters (or edit them in VS Code and watch the preview follow), get a table of contents, and export a good-looking PDF.
+### Wave 2 ✅ done
+Write a simple book: four templates with built-in themes, a table of contents, chapters opening on the right, typographic defaults, a styled editor, the chapter tree, click-to-source both ways, conflict handling, `booker check` / `where` / `page`, and golden tests. What it shipped, what it deviated from and what it found is in [`docs/WAVE-LOG.md`](WAVE-LOG.md); its brief remains in `docs/waves/wave-2.md`.
 
-| Track | Work | Tier |
-|---|---|---|
-| A. Doc AST | Markdown → AST (headings, paragraphs, emphasis, lists, quotes, simple images, breaks, attributes), with source spans | L |
-| B. Codegen | AST → Typst: chapters, `chapter.start`, TOC, page setup presets, margins, base font, **typographic defaults** (justification, hyphenation by language, stranded-line protection, smart quotes and dashes, ligatures) | L |
-| C. Editor | CodeMirror 6: Markdown live-styling (syntax hidden like Obsidian), chapter tree (add/rename/reorder → `book.toml`), autosave | M |
-| D. Preview | Incremental compile loop, visible-page rendering, zoom, click-to-source and cursor-to-page sync | M |
-| E. Project I/O | Conflict handling on top of Wave 1's watcher (an outside edit meeting an unsaved buffer offers both versions), `toml_edit` writer, `.gitignore`/`.gitattributes` generation | M |
-| F. Templates & fonts | 4 starter templates (novel, picture book, poetry, short paper), bundled font set + licenses | S (content) / M (wiring) |
-| G. Tests & CLI | Golden tests: fixture projects → PNG snapshots with pixel diff; `booker build`, and the first `booker check` rules (missing files, unresolved references) | S (fixtures) / M (harness) |
+Decisions taken there that constrain what follows:
+- **A theme is the bottom layer of the style cascade.** The four built-in themes (`booker_typst::themes`) are plain values — faces, sizes, spacing, where chapters start — and Wave 3's `styles.toml` overrides them; it does not replace them. A book that sets nothing still looks right.
+- **Codegen returns a span map with the source**, and click-to-source, `booker where` and `booker page` all read it. Anything that changes how Markdown becomes Typst must keep every piece of text mapped, or those three break quietly.
+- **The author's text is never read as Typst**: structure is emitted as function calls, soft breaks never become newlines, and quotes and hyphens are left for Typst to make typographic.
+- **`booker where FILE:LINE` and `booker page N` exist**, and Wave 7's `where` by phrase and `page` as JSON extend these forms rather than replace them.
+- **Nothing in the chapter tree deletes a file**, and a save never writes over a file that changed since the window read it.
 
 ### Wave 3: Styles
 **Demo:** click a heading, change it to bold 18 pt Arial on a green background, and see every heading update. Add a drop cap from an image to each chapter.
@@ -424,7 +421,7 @@ Exit criteria: a 24-page picture book can be laid out end to end without touchin
 |---|---|---|
 | A. Diagnostics engine | Rule registry with stable IDs and severities, source **and** layout locations, `[check]` configuration, inline suppressions, `booker explain <rule>` | L |
 | B. Rules backfill | The rules for everything Waves 1–5 shipped: references, layout, style, text, images (one rule per ticket) | M (rules: S) |
-| C. CLI | `check` (human / JSON / SARIF, exit codes), `render --page`, `where`, `page`, `fmt`, `fix --safe` | M |
+| C. CLI | `check` (SARIF, on top of Wave 2's human and JSON output), `render --page`, `where` by phrase and `page` as JSON (on top of Wave 2's `where FILE:LINE` and `page N`), `fmt`, `fix --safe` | M |
 | D. MCP server | `booker mcp` over stdio, tools mirroring the CLI, confined to the project folder, read-mostly | M |
 | E. Resilience | Hardening against outside edits: atomic writes, echo suppression, revision counter, partial load of broken projects, and the stress tests that prove Wave 1's watcher and Wave 2's conflict handling survive thirty files rewritten at once | L |
 | F. Discoverability | JSON Schemas generated from the parsing structs, `booker capabilities --json`, `booker explain <topic\|rule>`, `booker recipe list/show`, "did you mean" suggestions on unknown keys | M (recipes: S) |

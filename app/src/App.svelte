@@ -33,8 +33,8 @@
     else if (id === "check-for-updates") void checkForUpdates();
   });
 
-  // Track C starts emitting this when the watcher lands. Listening now
-  // means the window is already written to expect an outside edit.
+  // An outside edit — another editor, an agent, a checkout — arrives as
+  // one coalesced event; the store decides what it means for unsaved text.
   void ipc.onProjectChanged(() => void book.reloadFromDisk());
 
   async function chooseFolder() {
@@ -145,7 +145,9 @@
 
   .panes {
     display: grid;
-    grid-template-columns: 15rem 1fr 18rem;
+    /* Text and pages side by side, equally: the preview is half of what a
+       person is looking at, not a thumbnail beside it. */
+    grid-template-columns: 15rem minmax(20rem, 1fr) minmax(18rem, 1fr);
     min-height: 0;
   }
 

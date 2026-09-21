@@ -3,20 +3,27 @@
 use std::path::Path;
 use std::time::Instant;
 
+use std::num::NonZeroUsize;
+
 use booker_core::{
-    BookConfig, CompileRequest, CompileResult, CompileTarget, Error, Length, PageInfo, ProjectRef,
-    RenderFormat, RenderRequest, Result, Severity,
+    BookConfig, CompileRequest, CompileResult, CompileTarget, Error, Length, PageInfo, PagePoint,
+    ProjectRef, RenderFormat, RenderRequest, Result, Severity, Unit,
 };
 use booker_doc::Document;
 use typst::diag::{SourceResult, Warned};
+use typst::introspection::PagedPosition;
+use typst::layout::{Abs, Frame, FrameItem, Point};
 use typst::model::Numbering;
+use typst::syntax::Span;
 use typst::utils::Scalar;
+use typst::{World, WorldExt};
+use typst_ide::Jump;
 use typst_layout::{Page, PagedDocument};
 use typst_pdf::PdfOptions;
 use typst_render::RenderOptions;
 use typst_svg::SvgOptions;
 
-use crate::book;
+use crate::book::{self, SpanMap};
 use crate::diagnostics;
 use crate::fonts::Fonts;
 use crate::world::{BookerWorld, DEFAULT_ENTRYPOINT};
@@ -49,6 +56,9 @@ pub struct Engine {
     /// The last document that laid out successfully, kept so that rendering a
     /// page does not have to compile again.
     document: Option<PagedDocument>,
+    /// Where each piece of the generated source came from, for the book set
+    /// by the last [`Engine::set_book`].
+    spans: SpanMap,
 }
 
 /// What a compile produced: the contract's result, plus the bytes when a file
@@ -89,6 +99,7 @@ impl Engine {
             project,
             world,
             document: None,
+            spans: SpanMap::default(),
         })
     }
 
@@ -131,7 +142,75 @@ impl Engine {
     /// and a project folder should not fill up with generated source nobody
     /// asked for.
     pub fn set_book(&mut self, config: &BookConfig, chapters: &[(&str, &Document)]) -> Result<()> {
-        self.set_source(DEFAULT_ENTRYPOINT, book::book_to_typst(config, chapters))
+        let root = self.project.root.clone();
+        let image_exists = |relative: &str| {
+            // Only paths inside the project count: the world refuses to read
+            // anything else, so an image outside it is as good as missing.
+            !relative.split(['/', '\\']).any(|part| part == "..") && root.join(relative).is_file()
+        };
+        let (source, spans) = book::book_to_typst(config, chapters, &image_exists);
+        self.spans = spans;
+        self.set_source(DEFAULT_ENTRYPOINT, source)
+    }
+
+    /// The chapter (by index in the order given to [`Engine::set_book`]) and
+    /// the byte offset in its Markdown that produced what is drawn at
+    /// `point` — click-to-source. `None` when nothing there came from a
+    /// chapter: a margin, the page number, the table of contents.
+    pub fn source_at(&self, point: &PagePoint) -> Option<(usize, usize)> {
+        let document = self.document.as_ref()?;
+        let position = PagedPosition {
+            page: NonZeroUsize::new(usize::try_from(point.page).ok()? + 1)?,
+            point: Point::new(Abs::pt(point.x.to_pt()), Abs::pt(point.y.to_pt())),
+        };
+        match typst_ide::jump_from_click(&self.world, document, &position)? {
+            Jump::File(id, offset) if id == self.world.main() => self.spans.to_source(offset),
+            _ => None,
+        }
+    }
+
+    /// What is on page `page` (0-based): for every character drawn there
+    /// that came from a chapter, the chapter and the Markdown offset — in
+    /// the order they were drawn, duplicates and all. `booker page` turns
+    /// this into line ranges. `None` when there is no such page.
+    pub fn page_sources(&self, page: u32) -> Option<Vec<(usize, usize)>> {
+        let document = self.document.as_ref()?;
+        let page = document.pages().get(usize::try_from(page).ok()?)?;
+        let mut glyphs = Vec::new();
+        collect_text_spans(&page.frame, &mut glyphs);
+        let main = self.world.main();
+        Some(
+            glyphs
+                .into_iter()
+                .filter(|(span, _)| span.id() == Some(main))
+                .filter_map(|(span, offset)| {
+                    let range = self.world.range(span)?;
+                    self.spans.to_source(range.start + usize::from(offset))
+                })
+                .collect(),
+        )
+    }
+
+    /// Where the Markdown at `offset` in chapter `chapter` landed: every
+    /// place on every page — usually one — the text there was drawn.
+    pub fn pages_at(&self, chapter: usize, offset: usize) -> Vec<PagePoint> {
+        let Some(document) = self.document.as_ref() else {
+            return Vec::new();
+        };
+        let Some(generated) = self.spans.to_typst(chapter, offset) else {
+            return Vec::new();
+        };
+        let Ok(source) = self.world.source(self.world.main()) else {
+            return Vec::new();
+        };
+        typst_ide::jump_from_cursor(document, &source, generated)
+            .into_iter()
+            .map(|position| PagePoint {
+                page: u32::try_from(position.page.get() - 1).unwrap_or(u32::MAX),
+                x: Length::new(position.point.x.to_pt(), Unit::Pt),
+                y: Length::new(position.point.y.to_pt(), Unit::Pt),
+            })
+            .collect()
     }
 
     /// Drops an unsaved buffer; the file on disk speaks for itself again.
@@ -294,6 +373,17 @@ impl Engine {
                 self.project.root.display()
             ),
         })
+    }
+}
+
+/// The source span of every glyph in a frame, depth first.
+fn collect_text_spans(frame: &Frame, into: &mut Vec<(Span, u16)>) {
+    for (_, item) in frame.items() {
+        match item {
+            FrameItem::Group(group) => collect_text_spans(&group.frame, into),
+            FrameItem::Text(text) => into.extend(text.glyphs.iter().map(|glyph| glyph.span)),
+            _ => {}
+        }
     }
 }
 

@@ -96,7 +96,11 @@ fn the_generated_book_explains_the_format_to_whoever_opens_it_next() {
         "assets/images/",
         "format = 1",
         "Unknown keys are kept",
-        "booker build",
+        // The command an agent runs before saying it is finished, and the
+        // one that answers "page 3 looks wrong".
+        "booker check .",
+        "--format json",
+        "booker where",
         "BK-REF-001",
     ] {
         assert!(
@@ -138,13 +142,25 @@ fn an_unknown_template_says_what_there_is() {
     let error = run(
         Command::New {
             path: directory.path().join("x"),
-            template: "picture-book".to_string(),
+            template: "picturebook".to_string(),
             title: None,
         },
         &mut out,
     )
     .expect_err("it must refuse");
-    assert!(error.to_string().contains("novel"), "{error}");
+    let message = error.to_string();
+    assert!(
+        message.contains("novel, picture-book, poetry, paper"),
+        "{message}"
+    );
+    assert!(
+        message.contains("did you mean `picture-book`?"),
+        "{message}"
+    );
+    assert!(
+        !directory.path().join("x").exists(),
+        "nothing is created for a template that does not exist"
+    );
 }
 
 #[test]
@@ -246,4 +262,118 @@ fn listing(root: &Path) -> Vec<String> {
     walk(root, root, &mut found);
     found.sort();
     found
+}
+
+/// A two-chapter book, laid out as the novel theme does: contents on page 1,
+/// the first chapter on page 3, the second on page 5.
+fn two_chapter_book() -> tempfile::TempDir {
+    let directory = tempfile::tempdir().expect("a temporary folder");
+    let root = directory.path();
+    std::fs::write(root.join("book.toml"), "title = \"T\"\n").unwrap();
+    std::fs::create_dir(root.join("content")).unwrap();
+    std::fs::write(
+        root.join("content/01-one.md"),
+        "# One\n\nThe first chapter.\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("content/02-two.md"),
+        "# Two\n\nThe second chapter.\n\nIt has a second paragraph.\n",
+    )
+    .unwrap();
+    directory
+}
+
+#[test]
+fn check_names_every_fault_in_the_broken_fixture_with_its_place() {
+    let (code, output) = call(Command::Check {
+        project: fixture("broken"),
+        format: booker_cli::Format::Human,
+    });
+    assert_eq!(code, HAS_ERRORS, "{output}");
+    for expected in [
+        "book.toml:7:1: warning[BK-FORMAT-005]",
+        "book.toml:11:5: error[BK-REF-002]",
+        "error[BK-REF-001]",
+    ] {
+        assert!(
+            output.contains(expected),
+            "expected {expected} in:\n{output}"
+        );
+    }
+    assert!(!output.contains("Built"), "check writes nothing: {output}");
+}
+
+#[test]
+fn check_as_json_is_the_diagnostics_the_window_receives() {
+    let (code, output) = call(Command::Check {
+        project: fixture("broken"),
+        format: booker_cli::Format::Json,
+    });
+    assert_eq!(code, HAS_ERRORS);
+    let problems: Vec<booker_core::Diagnostic> =
+        serde_json::from_str(&output).expect("an array of diagnostics");
+    assert!(problems.iter().any(|d| d.rule == "BK-REF-002"));
+    assert!(
+        problems.iter().all(|d| d.source.is_some()),
+        "every problem says where it is: {output}"
+    );
+}
+
+#[test]
+fn a_clean_book_checks_clean() {
+    let book = two_chapter_book();
+    let (code, output) = call(Command::Check {
+        project: book.path().to_path_buf(),
+        format: booker_cli::Format::Human,
+    });
+    assert_eq!((code, output.as_str()), (OK, "Problems: none\n"));
+}
+
+#[test]
+fn where_says_which_page_a_line_is_on() {
+    let book = two_chapter_book();
+    let (code, output) = call(Command::Where {
+        location: "content/02-two.md:5".to_string(),
+        project: book.path().to_path_buf(),
+    });
+    assert_eq!(code, OK, "{output}");
+    assert_eq!(output, "content/02-two.md:5 is on page 5\n");
+}
+
+#[test]
+fn where_refuses_a_file_that_is_not_a_chapter_and_names_the_chapters() {
+    let book = two_chapter_book();
+    let mut out = Vec::new();
+    let error = run(
+        Command::Where {
+            location: "content/03.md:1".to_string(),
+            project: book.path().to_path_buf(),
+        },
+        &mut out,
+    )
+    .expect_err("there is no such chapter");
+    assert!(
+        error
+            .to_string()
+            .contains("its chapters are: content/01-one.md, content/02-two.md"),
+        "{error}"
+    );
+}
+
+#[test]
+fn page_says_which_lines_are_on_it() {
+    let book = two_chapter_book();
+    let (code, output) = call(Command::Page {
+        number: 5,
+        project: book.path().to_path_buf(),
+    });
+    assert_eq!(code, OK, "{output}");
+    assert_eq!(output, "Page 5 shows:\n  content/02-two.md:1–5\n");
+
+    let (_, blank) = call(Command::Page {
+        number: 4,
+        project: book.path().to_path_buf(),
+    });
+    assert_eq!(blank, "Page 4 has no text from any chapter on it\n");
 }

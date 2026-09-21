@@ -16,7 +16,10 @@ use std::str::FromStr;
 
 use booker_core::diagnostic::Severity;
 use booker_core::geometry::{Length, Margins, PageSize, Preset};
-use booker_core::{BookConfig, Diagnostic, PageConfig, SourceLocation, FORMAT_VERSION};
+use booker_core::{
+    BookConfig, ChapterConfig, ChapterStart, Diagnostic, PageConfig, SourceLocation, TocConfig,
+    DEFAULT_THEME, FORMAT_VERSION, THEMES,
+};
 use booker_doc::{LineIndex, Span};
 use toml_edit::{DocumentMut, ImDocument};
 
@@ -26,7 +29,11 @@ use crate::toml_tree::{closest, to_toml_value, Node};
 /// The name of the project file, everywhere.
 pub const BOOK_TOML: &str = "book.toml";
 
-const TOP_LEVEL_KEYS: &[&str] = &["format", "title", "author", "language", "chapters", "page"];
+const TOP_LEVEL_KEYS: &[&str] = &[
+    "format", "title", "author", "language", "chapters", "page", "theme", "toc", "chapter",
+];
+const TOC_KEYS: &[&str] = &["enabled", "depth", "title"];
+const CHAPTER_KEYS: &[&str] = &["start"];
 const PAGE_KEYS: &[&str] = &["size", "margins", "facing", "bleed"];
 const MARGIN_KEYS: &[&str] = &["top", "bottom", "inside", "outside"];
 
@@ -34,7 +41,7 @@ const MARGIN_KEYS: &[&str] = &["top", "bottom", "inside", "outside"];
 /// (`PLAN.md` §5.2). They are preserved like any unknown key, but telling a
 /// user their `[toc]` section is a mystery would be a lie: we know what it
 /// is, it simply arrives in a later wave.
-const PLANNED_KEYS: &[&str] = &["theme", "toc", "chapter", "output", "check", "styles"];
+const PLANNED_KEYS: &[&str] = &["output", "check", "styles"];
 
 /// `book.toml`, held twice on purpose.
 ///
@@ -261,6 +268,9 @@ impl ConfigFile {
             language,
             chapters,
             page,
+            theme: self.read_theme(root, &mut diagnostics),
+            toc: self.read_toc(root, &mut diagnostics),
+            chapter: self.read_chapter(root, &mut diagnostics),
             extra,
         };
 
@@ -463,6 +473,112 @@ impl ConfigFile {
 
         self.check_keys(node, PAGE_KEYS, "page", diagnostics);
         page
+    }
+
+    /// `theme`: kept as written even when it is not a built-in theme, so a
+    /// newer Booker's theme survives a round trip; the default is what lays
+    /// the book out, and the author is told (`BK-FORMAT-006`).
+    fn read_theme(&self, root: Node<'_>, diagnostics: &mut Vec<Diagnostic>) -> Option<String> {
+        let name = self.read_string(root, "theme", diagnostics)?;
+        if !THEMES.contains(&name.as_str()) {
+            let suggestion = closest(&name, THEMES)
+                .map(|near| format!("did you mean `{near}`? "))
+                .unwrap_or_default();
+            diagnostics.push(
+                Diagnostic::error(
+                    rules::UNKNOWN_THEME,
+                    format!(
+                        "there is no theme called `{name}`, so the `{DEFAULT_THEME}` theme is \
+                         being used. {suggestion}The themes are: {}",
+                        THEMES.join(", ")
+                    ),
+                )
+                .at(self.location(root.get("theme").and_then(Node::span))),
+            );
+        }
+        Some(name)
+    }
+
+    fn read_toc(&self, root: Node<'_>, diagnostics: &mut Vec<Diagnostic>) -> TocConfig {
+        let mut toc = TocConfig::default();
+        let Some(node) = root.get("toc") else {
+            return toc;
+        };
+        if !node.is_table() {
+            self.bad_value(node, "toc", "a table, written `[toc]`", diagnostics);
+            return toc;
+        }
+        toc.enabled = self.read_bool(node, "enabled", "toc.enabled", diagnostics);
+        if let Some(depth_node) = node.get("depth") {
+            match depth_node.as_integer() {
+                Some(depth @ 1..=3) => toc.depth = Some(depth as u8),
+                _ => diagnostics.push(
+                    Diagnostic::error(
+                        rules::BAD_VALUE,
+                        "`toc.depth` should be 1, 2 or 3 — how many levels of headings the \
+                         table of contents lists; 1 is used instead"
+                            .to_string(),
+                    )
+                    .at(self.location(depth_node.span())),
+                ),
+            }
+        }
+        toc.title = self.read_string(node, "title", diagnostics);
+        self.check_keys(node, TOC_KEYS, "toc", diagnostics);
+        toc.extra = self.unknown_values(node, TOC_KEYS);
+        toc
+    }
+
+    fn read_chapter(&self, root: Node<'_>, diagnostics: &mut Vec<Diagnostic>) -> ChapterConfig {
+        let mut chapter = ChapterConfig::default();
+        let Some(node) = root.get("chapter") else {
+            return chapter;
+        };
+        if !node.is_table() {
+            self.bad_value(node, "chapter", "a table, written `[chapter]`", diagnostics);
+            return chapter;
+        }
+        if let Some(start) = node.get("start") {
+            match start.as_str().and_then(ChapterStart::from_name) {
+                Some(value) => chapter.start = Some(value),
+                None => {
+                    let written = start.as_str().unwrap_or_default();
+                    let suggestion = closest(written, ChapterStart::NAMES)
+                        .map(|near| format!("did you mean `{near}`? "))
+                        .unwrap_or_default();
+                    diagnostics.push(
+                        Diagnostic::error(
+                            rules::BAD_VALUE,
+                            format!(
+                                "`chapter.start` should be one of {}; the theme's choice is \
+                                 being used instead. {suggestion}",
+                                ChapterStart::NAMES
+                                    .iter()
+                                    .map(|name| format!("`{name}`"))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            )
+                            .trim_end()
+                            .to_string(),
+                        )
+                        .at(self.location(start.span())),
+                    );
+                }
+            }
+        }
+        self.check_keys(node, CHAPTER_KEYS, "chapter", diagnostics);
+        chapter.extra = self.unknown_values(node, CHAPTER_KEYS);
+        chapter
+    }
+
+    /// The keys of `table` this build does not know, kept for the typed view.
+    fn unknown_values(&self, table: Node<'_>, known: &[&str]) -> BTreeMap<String, toml::Value> {
+        table
+            .keys()
+            .into_iter()
+            .filter(|key| !known.contains(key))
+            .filter_map(|key| Some((key.to_string(), to_toml_value(table.get(key)?)?)))
+            .collect()
     }
 
     fn read_page_size(&self, node: Node<'_>) -> Result<PageSize, String> {

@@ -1,7 +1,9 @@
 //! The document model.
 //!
-//! Small on purpose: Wave 0 needs headings, paragraphs, emphasis, lists,
-//! quotes, images and code blocks. The invariant that must not be given up
+//! Small on purpose: headings, paragraphs, emphasis, lists, quotes, images,
+//! code, and — since Wave 2 — `:::` divs, `[bracketed]{spans}`, tables and
+//! strikethrough, each able to carry `{#id .class key=value}` attributes
+//! where the syntax allows. The invariant that must not be given up
 //! as it grows is that **every node carries the span it was parsed from**.
 
 use crate::span::Span;
@@ -16,10 +18,9 @@ pub struct Document {
 
 /// Booker's `{#id .class key=value}` attribute block.
 ///
-/// Wave 0 fills this in only where the parser hands it to us for free
-/// (headings). Wave 1 adds the attribute pass for images, spans and fenced
-/// divs — which is why every node that will be able to carry attributes has
-/// the field now, rather than the model having to change shape later.
+/// Read on headings, images, `[bracketed spans]` and `:::` divs
+/// (`crate::attributes`). Other nodes carry the field empty, so the model
+/// does not change shape when they learn to take attributes too.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Attributes {
     pub id: Option<String>,
@@ -60,9 +61,13 @@ pub enum Block {
         span: Span,
         value: String,
     },
-    /// A construct this build does not model yet — a table, a footnote
-    /// definition. Kept, with its span, so nothing silently disappears from
-    /// a document and a diagnostic can still point at it.
+    /// `::: {.class}` … `:::` — blocks grouped under attributes.
+    Div(Div),
+    /// A GitHub-style table.
+    Table(Table),
+    /// A construct this build does not model yet — a footnote definition,
+    /// say. Kept, with its span, so nothing silently disappears from a
+    /// document and a diagnostic can still point at it.
     Unsupported {
         span: Span,
         kind: String,
@@ -77,6 +82,8 @@ impl Block {
             Block::List(l) => l.span,
             Block::Quote(q) => q.span,
             Block::Code(c) => c.span,
+            Block::Div(d) => d.span,
+            Block::Table(t) => t.span,
             Block::ThematicBreak { span }
             | Block::Html { span, .. }
             | Block::Unsupported { span, .. } => *span,
@@ -127,6 +134,48 @@ pub struct Quote {
     pub span: Span,
 }
 
+/// A fenced div: `::: {.poem}`, then blocks, then `:::`.
+///
+/// Its span runs from the start of the opening fence to the end of the
+/// closing one, or to the end of the file when the author never closed it.
+/// A div with no blocks is legitimate: `::: page-break` / `:::` is how a
+/// page break is written.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Div {
+    pub attributes: Attributes,
+    pub blocks: Vec<Block>,
+    pub span: Span,
+}
+
+impl Div {
+    pub fn has_class(&self, class: &str) -> bool {
+        self.attributes.classes.iter().any(|c| c == class)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Alignment {
+    None,
+    Left,
+    Center,
+    Right,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Table {
+    /// One per column.
+    pub alignments: Vec<Alignment>,
+    pub head: Vec<TableCell>,
+    pub rows: Vec<Vec<TableCell>>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableCell {
+    pub inlines: Vec<Inline>,
+    pub span: Span,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CodeBlock {
     /// The info string of a fenced block: `rust`, `{=typst}`, or nothing.
@@ -137,15 +186,55 @@ pub struct CodeBlock {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Inline {
-    Text { span: Span, value: String },
-    Emphasis { span: Span, children: Vec<Inline> },
-    Strong { span: Span, children: Vec<Inline> },
-    Code { span: Span, value: String },
+    Text {
+        span: Span,
+        value: String,
+    },
+    Emphasis {
+        span: Span,
+        children: Vec<Inline>,
+    },
+    Strong {
+        span: Span,
+        children: Vec<Inline>,
+    },
+    /// `~~struck~~`
+    Strikethrough {
+        span: Span,
+        children: Vec<Inline>,
+    },
+    Code {
+        span: Span,
+        value: String,
+    },
     Link(Link),
     Image(Image),
-    SoftBreak { span: Span },
-    HardBreak { span: Span },
-    Html { span: Span, value: String },
+    /// `[some text]{.class}`
+    Span(InlineSpan),
+    SoftBreak {
+        span: Span,
+    },
+    HardBreak {
+        span: Span,
+    },
+    Html {
+        span: Span,
+        value: String,
+    },
+    /// An inline this build does not lay out yet, such as a footnote
+    /// reference. Kept so it can be reported rather than vanish.
+    Unsupported {
+        span: Span,
+        kind: String,
+    },
+}
+
+/// `[some text]{#id .class}`: inlines grouped under attributes.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InlineSpan {
+    pub children: Vec<Inline>,
+    pub attributes: Attributes,
+    pub span: Span,
 }
 
 impl Inline {
@@ -154,18 +243,24 @@ impl Inline {
             Inline::Text { span, .. }
             | Inline::Emphasis { span, .. }
             | Inline::Strong { span, .. }
+            | Inline::Strikethrough { span, .. }
             | Inline::Code { span, .. }
             | Inline::SoftBreak { span }
             | Inline::HardBreak { span }
-            | Inline::Html { span, .. } => *span,
+            | Inline::Html { span, .. }
+            | Inline::Unsupported { span, .. } => *span,
             Inline::Link(link) => link.span,
             Inline::Image(image) => image.span,
+            Inline::Span(inline) => inline.span,
         }
     }
 
     pub fn children(&self) -> &[Inline] {
         match self {
-            Inline::Emphasis { children, .. } | Inline::Strong { children, .. } => children,
+            Inline::Emphasis { children, .. }
+            | Inline::Strong { children, .. }
+            | Inline::Strikethrough { children, .. } => children,
+            Inline::Span(inline) => &inline.children,
             Inline::Link(link) => &link.children,
             Inline::Image(image) => &image.alt,
             _ => &[],
@@ -177,7 +272,7 @@ impl Inline {
         match self {
             Inline::Text { value, .. } | Inline::Code { value, .. } => value.clone(),
             Inline::SoftBreak { .. } | Inline::HardBreak { .. } => " ".to_string(),
-            Inline::Html { .. } => String::new(),
+            Inline::Html { .. } | Inline::Unsupported { .. } => String::new(),
             other => other.children().iter().map(Inline::text).collect(),
         }
     }
@@ -240,6 +335,8 @@ impl Node<'_> {
                 Block::List(_) => "list",
                 Block::Quote(_) => "quote",
                 Block::Code(_) => "code",
+                Block::Div(_) => "div",
+                Block::Table(_) => "table",
                 Block::ThematicBreak { .. } => "thematic-break",
                 Block::Html { .. } => "html",
                 Block::Unsupported { .. } => "unsupported",
@@ -248,12 +345,15 @@ impl Node<'_> {
                 Inline::Text { .. } => "text",
                 Inline::Emphasis { .. } => "emphasis",
                 Inline::Strong { .. } => "strong",
+                Inline::Strikethrough { .. } => "strikethrough",
                 Inline::Code { .. } => "inline-code",
                 Inline::Link(_) => "link",
                 Inline::Image(_) => "image",
+                Inline::Span(_) => "span",
                 Inline::SoftBreak { .. } => "soft-break",
                 Inline::HardBreak { .. } => "hard-break",
                 Inline::Html { .. } => "inline-html",
+                Inline::Unsupported { .. } => "unsupported-inline",
             },
         }
     }
@@ -314,6 +414,16 @@ fn walk_block<'a>(block: &'a Block, visit: &mut impl FnMut(Node<'a>)) {
                 walk_block(child, visit);
             }
         }
+        Block::Div(div) => {
+            for child in &div.blocks {
+                walk_block(child, visit);
+            }
+        }
+        Block::Table(table) => {
+            for cell in table.head.iter().chain(table.rows.iter().flatten()) {
+                walk_inlines(&cell.inlines, visit);
+            }
+        }
         Block::List(list) => {
             for item in &list.items {
                 visit(Node::Item(item));
@@ -343,6 +453,18 @@ fn block_text(block: &Block, out: &mut String) {
         Block::Quote(quote) => {
             for child in &quote.blocks {
                 block_text(child, out);
+            }
+        }
+        Block::Div(div) => {
+            for child in &div.blocks {
+                block_text(child, out);
+            }
+        }
+        Block::Table(table) => {
+            for row in std::iter::once(&table.head).chain(table.rows.iter()) {
+                for cell in row {
+                    push_inlines(&cell.inlines, out);
+                }
             }
         }
         Block::List(list) => {

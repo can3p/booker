@@ -1,0 +1,9 @@
+title = "Small Hours"
+theme = "poetry"
+chapters = ["content/01-poems.md"]
+
+[toc]
+enabled = true
+
+[page]
+size = "a5"

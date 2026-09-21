@@ -142,6 +142,14 @@ impl BookerWorld {
     }
 }
 
+/// What `typst-ide` needs to map a click on a page back into the source.
+/// Nothing beyond the world itself: no package index, no file listing.
+impl typst_ide::IdeWorld for BookerWorld {
+    fn upcast(&self) -> &dyn World {
+        self
+    }
+}
+
 impl World for BookerWorld {
     fn library(&self) -> &LazyHash<Library> {
         &self.library

@@ -6,6 +6,7 @@
 
 use clap::{Parser, Subcommand};
 
+mod golden;
 mod third_party;
 
 #[derive(Parser)]
@@ -32,6 +33,10 @@ enum Command {
         /// Fail if the file is out of date instead of rewriting it.
         #[arg(long)]
         check: bool,
+        /// Check only one part: `rust` needs `cargo deny`, `javascript`
+        /// an installed `app/node_modules`.
+        #[arg(long, value_enum, requires = "check")]
+        only: Option<third_party::Part>,
     },
 }
 
@@ -40,8 +45,8 @@ fn main() -> anyhow::Result<()> {
         Command::Bindings => {
             anyhow::bail!("run `cargo test -p booker-core export_bindings` for now")
         }
-        Command::Golden => anyhow::bail!("golden snapshots arrive with Wave 2 track G"),
+        Command::Golden => golden::run(),
         Command::Eval { .. } => anyhow::bail!("the eval harness arrives with Wave 7 track I"),
-        Command::ThirdParty { check } => third_party::run(check),
+        Command::ThirdParty { check, only } => third_party::run(check, only),
     }
 }

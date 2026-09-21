@@ -6,7 +6,7 @@ Book authoring for people who want a good-looking book without learning typesett
 
 A Booker project is a plain folder: Markdown for the text, a few readable TOML files for how it should look. It lives in git, opens in any editor, and builds into a print-ready PDF. The layout engine is [Typst](https://typst.app), embedded in the application, so a 200-page novel lays out in about half a second.
 
-**Status: early, and not released.** A folder of Markdown becomes a printable PDF, from the command line or from the application window. Booker is developed locally for now and nothing has been published, so both run from a source checkout. What it cannot do yet is most of what makes a book look like a book: fonts, headings, images, page rules and templates all come later. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
+**Status: early, and not released.** A folder of Markdown becomes a printable PDF, from the command line or from the application window. Booker is developed locally for now and nothing has been published, so both run from a source checkout. The PDF is typeset like a book with no configuration — a table of contents, chapters opening on right-hand pages, justified and hyphenated text, typographic quotes and dashes — in one of four built-in themes (`novel`, `picture-book`, `poetry`, `paper`) chosen with `theme` in `book.toml`. What it cannot do yet is let you change the look beyond that: styles, page rules, pictures placed anywhere but between paragraphs, and more templates all come later. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
 
 ## Start here
 
@@ -16,7 +16,12 @@ nothing — it starts at installing Booker — and it is the quickest way to fin
 is. Everything below is the short version and the reference.
 
 **[The Booker window](docs/tutorials/02-the-app.md)** does the same in the application:
-install it, open a folder, watch the pages redraw as you type, export the PDF.
+open a folder, write with the pages beside you, click a page to find its text, add and
+reorder chapters, export the PDF.
+
+**[Writing a book in Markdown](docs/tutorials/03-writing-in-markdown.md)** is everything a
+book is made of — headings, quotes and dashes, scene breaks, pictures, tables, page breaks,
+links between chapters — and how to write each one.
 
 [`docs/tutorials/`](docs/tutorials/index.md) is the full list; between them the tutorials
 cover everything Booker can currently do.
@@ -53,7 +58,7 @@ $EDITOR ~/books/my-book/content/01-the-first-chapter.md
 
 # Build the PDF
 cargo run --release -p booker-cli -- build ~/books/my-book
-# → Built build/the-secret-garden-of-mia.pdf — 1 pages in 98 ms
+# → Built build/the-secret-garden-of-mia.pdf — 1 page in 98 ms
 ```
 
 To type `booker` instead of `cargo run -p booker-cli --`, install it onto your PATH:
@@ -68,10 +73,13 @@ booker build ~/books/my-book
 
 | Command | What it does |
 |---|---|
-| `booker new <path> [--title <title>] [--template novel]` | Create a book project. `novel` is the only template so far. |
-| `booker build <path>` | Load the project, report any problems, and write `build/<title>.pdf`. |
+| `booker new <path> [--title <title>] [--template <name>]` | Create a book project from a template: `novel` (the default), `picture-book`, `poetry` or `paper`. Each starts with sample text that says how to use it, and its own theme. |
+| `booker build <path>` | Load the project, lay it out, report any problems, and write `build/<title>.pdf`. |
+| `booker check <path> [--format json]` | Lay the book out and report every problem — with its file, line and rule ID — writing nothing. `json` is for scripts and assistants. |
+| `booker where <file>:<line> [<path>]` | Say which page a line of a chapter landed on. |
+| `booker page <n> [<path>]` | Say which lines of which chapters are printed on page *n*. |
 
-`booker build` exits `0` when the book is clean, `1` when the project has errors, and `2` when the command itself could not run.
+`booker build` and `booker check` exit `0` when the book is clean, `1` when it has errors, and `2` when the command itself could not run. `where` exits `1` when the line prints nothing.
 
 ### The application
 
@@ -106,7 +114,7 @@ The editor is a plain text pane for now; live Markdown styling arrives in Wave 2
 
 ```
 my-book/
-├── book.toml      # title, author, language, chapter order, page size and margins
+├── book.toml      # title, author, language, theme, chapter order, page size and margins
 ├── content/       # the text, one Markdown file per chapter
 │   └── 01-the-first-chapter.md
 ├── assets/images/ # pictures that belong to this book

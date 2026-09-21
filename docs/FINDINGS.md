@@ -268,3 +268,15 @@ Format:
 - What: the text node for an escaped character covers only the character, not the backslash before it, so the node's value is exactly its source slice and looks like unescaped text. A pass that trusts "value equals source, so this is what the author typed" reads `\[x]{.y}` as a bracketed span.
 - Why it matters: any pass over parsed text that looks for syntax the parser does not know — spans now, perhaps smart punctuation or anchors later — must check the byte before a candidate for a backslash (`booker_doc::inlines::escaped`), not only compare a node with its source.
 - Where: `crates/booker-doc/src/inlines.rs`; pulldown-cmark 0.13.
+
+### `typst-ide` points at the start of a run of text, and ranges must be half-open
+- Learned: 2026-09-21, Wave 2 / track D
+- What: `jump_from_cursor` finds the syntax leaf under the cursor and returns where that *leaf* was drawn, so for a sentence written as one text node the answer is the start of the sentence, not the word the cursor is on. `jump_from_click` is finer — it resolves the glyph under the click and returns its offset within the span. And a lookup table from generated source back to Markdown must use half-open ranges: with closed ones, a heading whose generated source ends exactly where the next paragraph's begins claimed the paragraph's first letter, and a click on "The" opened the chapter title.
+- Why it matters: cursor-to-page is page-and-line precise, not word precise, and that is enough for a preview that scrolls to a page and marks the line. Anything wanting more — highlighting a word in the preview — would need text split into smaller nodes, or a second pass with Typst's introspection.
+- Where: `crates/booker-typst/src/book.rs` (`SpanMap`), `crates/booker-typst/src/engine.rs` (`source_at`, `pages_at`, `page_sources`); typst-ide 0.15.1.
+
+### The golden renders are deterministic on one machine; across platforms is CI's to say
+- Learned: 2026-09-21, Wave 2 / track G
+- What: `typst-render` rasterises in software, and two runs — and a regeneration with nothing changed — produced byte-identical PNGs. The suite still compares per pixel with a tolerance (a channel may differ by 24 of 255, a page by 0.1% of its pixels), because whether the three platforms agree to the byte has not been measured yet.
+- Why it matters: if the first three-platform run shows identical bytes, the tolerance can tighten; if it shows differences, this entry should say how large they were before anybody loosens it. Moving one theme spacing value changed 3.9% of a page, so the current tolerance is far below any real change.
+- Where: `crates/booker-cli/tests/golden.rs`, `fixtures/golden/`.

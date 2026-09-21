@@ -249,3 +249,21 @@ Format:
 - What: GitHub Actions expands `${{ secrets.NAME }}` for a secret that does not exist to an empty string, so `env: APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}` *defines* the variable. Tauri's bundler checks whether `APPLE_CERTIFICATE` is defined, not whether it holds anything, and then fails every macOS bundle with `failed to bundle project: failed codesign application: failed to run command security import: failed to import keychain certificate`.
 - Why it matters: Wave 1's release workflow said it "builds correctly without them and picks them up when they appear", and the claim was never tested because nothing had been tagged. The first tag failed both macOS targets. The Apple variables now reach the build only through a step that exports them to `$GITHUB_ENV` when the certificate is non-empty. The same trap applies to any tool that keys on a variable's presence: pass optional secrets conditionally, never straight through `env:`.
 - Where: `.github/workflows/release.yml` ("Apple signing, when it is configured"), `tauri-apps/tauri-action@v0`, Tauri CLI 2.
+
+### Typst 0.15 takes bold from a variable font — but did not pick Literata's italic
+- Learned: 2026-09-21, Wave 2 / track F
+- What: bundled as variable fonts (one file per style, a `wght` axis inside), EB Garamond, Source Serif 4 and Inter all give real bold and real italic in Typst 0.15.1, so a family costs two files instead of four. Literata did not: with `Literata[opsz,wght].ttf` and `Literata-Italic[opsz,wght].ttf` both loaded, `_italic_` came out upright, although the italic file's OS/2 and `head` flags both say italic and its default instance is weight 400. Not investigated further — Literata was replaced by EB Garamond, which is the more bookish face anyway.
+- Why it matters: before choosing a bundled face, render regular, bold, italic and bold italic in it once. The check takes a minute; an upright "italic" in a novel is the kind of thing nobody notices until it is printed. Inter is bundled without its italic file (headings only), so emphasis in an Inter heading is upright by design.
+- Where: `crates/booker-typst/fonts/NOTICE.txt`; Google Fonts `ofl/literata`, as of 2026-09.
+
+### Typst's paragraph spacing replaces the line gap; it does not add to it
+- Learned: 2026-09-21, Wave 2 / track B
+- What: `par(spacing: …)` is the whole gap between two paragraphs, measured like `leading`, not an extra added on top of it. With `leading: 0.75em` a `spacing` of `0.9em` is 0.15em more than an ordinary line break — invisible on the page, although the source looks like it asks for a clear gap.
+- Why it matters: it was invisible in the first render of the picture-book and paper themes and plainly wrong once looked at. Themes now state the gap they *add* (`Paragraphs::Spaced { gap_em }`) and codegen passes `leading + gap`. Look at a render after touching spacing; no test caught this.
+- Where: `crates/booker-typst/src/themes.rs`, `crates/booker-typst/src/book.rs` (`preamble`).
+
+### `pulldown-cmark` gives `\[` a span that leaves the backslash out
+- Learned: 2026-09-21, Wave 2 / track A
+- What: the text node for an escaped character covers only the character, not the backslash before it, so the node's value is exactly its source slice and looks like unescaped text. A pass that trusts "value equals source, so this is what the author typed" reads `\[x]{.y}` as a bracketed span.
+- Why it matters: any pass over parsed text that looks for syntax the parser does not know — spans now, perhaps smart punctuation or anchors later — must check the byte before a candidate for a backslash (`booker_doc::inlines::escaped`), not only compare a node with its source.
+- Where: `crates/booker-doc/src/inlines.rs`; pulldown-cmark 0.13.

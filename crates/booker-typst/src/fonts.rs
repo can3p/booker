@@ -42,6 +42,43 @@ const BUNDLED: &[(&str, &[u8])] = &[
     (
         "DejaVuSansMono.ttf",
         include_bytes!("../fonts/DejaVuSansMono.ttf"),
+    ), // Wave 2: the faces the four built-in themes use (`crate::themes`).
+    // Variable fonts: Typst 0.15 takes bold from the weight axis.
+    (
+        "EBGaramond-Variable.ttf",
+        include_bytes!("../fonts/EBGaramond-Variable.ttf"),
+    ),
+    (
+        "EBGaramond-Italic-Variable.ttf",
+        include_bytes!("../fonts/EBGaramond-Italic-Variable.ttf"),
+    ),
+    (
+        "SourceSerif4-Variable.ttf",
+        include_bytes!("../fonts/SourceSerif4-Variable.ttf"),
+    ),
+    (
+        "SourceSerif4-Italic-Variable.ttf",
+        include_bytes!("../fonts/SourceSerif4-Italic-Variable.ttf"),
+    ),
+    (
+        "Inter-Variable.ttf",
+        include_bytes!("../fonts/Inter-Variable.ttf"),
+    ),
+    (
+        "Andika-Regular.ttf",
+        include_bytes!("../fonts/Andika-Regular.ttf"),
+    ),
+    (
+        "Andika-Italic.ttf",
+        include_bytes!("../fonts/Andika-Italic.ttf"),
+    ),
+    (
+        "Andika-Bold.ttf",
+        include_bytes!("../fonts/Andika-Bold.ttf"),
+    ),
+    (
+        "Andika-BoldItalic.ttf",
+        include_bytes!("../fonts/Andika-BoldItalic.ttf"),
     ),
 ];
 

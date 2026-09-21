@@ -18,10 +18,11 @@ Booker embeds its fonts in the binary, so they travel with every build. Their no
 Fonts bundled with Booker
 =========================
 
-These files are copied verbatim from `typst-assets` 0.15.1
-(https://github.com/typst/typst-assets), which is where the Typst CLI takes
-its own defaults from. They are here so that a compile produces the same
-pages on every machine, whether or not the machine has any fonts installed.
+They are here so that a compile produces the same pages on every machine,
+whether or not the machine has any fonts installed. All are unmodified.
+
+From `typst-assets` 0.15.1 (https://github.com/typst/typst-assets), which is
+where the Typst CLI takes its own defaults from:
 
 * LibertinusSerif-{Regular,Italic,Bold,BoldItalic}.otf — SIL Open Font
   License 1.1. This is Typst's default text family, so a document that sets
@@ -29,10 +30,31 @@ pages on every machine, whether or not the machine has any fonts installed.
 * DejaVuSansMono.ttf — Bitstream Vera licence (see below). Typst's default
   family for `raw` (code) blocks.
 
+From Google Fonts (https://github.com/google/fonts, directory `ofl/`), for
+the four built-in themes; the files named `-Variable` are the variable-font
+files published there as `<Family>[wght].ttf` or `<Family>[opsz,wght].ttf`,
+renamed only because brackets make awkward paths:
+
+* EBGaramond-Variable.ttf, EBGaramond-Italic-Variable.ttf — SIL Open Font
+  License 1.1. Copyright 2017 The EB Garamond Project Authors
+  (https://github.com/octaviopardo/EBGaramond12). The `novel` and `poetry`
+  themes.
+* SourceSerif4-Variable.ttf, SourceSerif4-Italic-Variable.ttf — SIL Open
+  Font License 1.1. Copyright 2014 The Source Serif 4 Project Authors
+  (https://github.com/adobe-fonts/source-serif). The `paper` theme's text.
+* Inter-Variable.ttf — SIL Open Font License 1.1. Copyright 2020 The Inter
+  Project Authors (https://github.com/rsms/inter). The `paper` theme's
+  headings.
+* Andika-{Regular,Italic,Bold,BoldItalic}.ttf — SIL Open Font License 1.1.
+  Copyright (c) 2004-2022 SIL International (http://www.sil.org/), with
+  Reserved Font Names "Andika" and "SIL". The `picture-book` theme: a face
+  designed for people learning to read.
+
 A project's own fonts, in `assets/fonts/`, are loaded on top of these and
 win when a family name collides.
 
-The full licence texts follow, as required by both licences.
+The full licence texts follow, as required by both licences. The SIL Open
+Font License text below applies to every font above marked with it.
 
 ================================================================================
 The SIL Open Font License Version 1.1 applies to:

@@ -125,8 +125,9 @@ fn keys_this_build_does_not_understand_survive_a_write() {
     // They are in the typed view…
     let extra = &project.config().extra;
     assert!(extra.contains_key("future-feature"), "{extra:?}");
-    assert!(extra.contains_key("toc"), "{extra:?}");
     assert!(extra.contains_key("output"), "{extra:?}");
+    // `[toc]` became a known table in Wave 2: read, not merely kept.
+    assert_eq!(project.config().toc.depth, Some(2));
     assert_eq!(extra["future-feature"]["tries"].as_integer(), Some(3));
 
     // …and they are still in the file after we write to it.
@@ -175,17 +176,18 @@ fn an_unknown_key_is_reported_and_a_typo_gets_a_suggestion() {
 
 #[test]
 fn keys_the_plan_has_named_but_this_build_lacks_are_not_called_unknown() {
-    let (_directory, project) = project_with("title = \"Mia\"\n\n[toc]\nenabled = true\n");
-    let about_toc: Vec<&str> = project
+    let (_directory, project) =
+        project_with("title = \"Mia\"\n\n[output.print]\nformat = \"pdf\"\n");
+    let about_output: Vec<&str> = project
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.message.contains("toc"))
+        .filter(|diagnostic| diagnostic.message.contains("output"))
         .map(|diagnostic| diagnostic.message.as_str())
         .collect();
-    assert_eq!(about_toc.len(), 1, "{about_toc:?}");
+    assert_eq!(about_output.len(), 1, "{about_output:?}");
     assert!(
-        about_toc[0].contains("not implemented in this build"),
-        "{about_toc:?}"
+        about_output[0].contains("not implemented in this build"),
+        "{about_output:?}"
     );
     assert!(
         project

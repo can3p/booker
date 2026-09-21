@@ -360,3 +360,63 @@ fn markdown_that_is_kept_but_not_laid_out_is_reported_where_it_is() {
     assert!(lines[1].1.starts_with("HTML"));
     assert!(lines[2].1.starts_with("a footnote"));
 }
+
+fn book_with_config(toml: &str) -> (tempfile::TempDir, Project) {
+    let folder = tempfile::tempdir().unwrap();
+    std::fs::write(folder.path().join("book.toml"), toml).unwrap();
+    std::fs::write(folder.path().join("book.md"), "# One\n").unwrap();
+    let project = Project::load(folder.path()).unwrap();
+    (folder, project)
+}
+
+#[test]
+fn a_theme_that_does_not_exist_names_the_ones_that_do() {
+    let (_folder, project) = book_with_config("title = \"T\"\ntheme = \"novle\"\n");
+    let found = find(&project, rules::UNKNOWN_THEME);
+    assert_eq!(found.len(), 1);
+    assert!(
+        found[0].message.contains("did you mean `novel`?"),
+        "{}",
+        found[0].message
+    );
+    assert!(found[0]
+        .message
+        .contains("novel, picture-book, poetry, paper"));
+    assert_eq!(found[0].source.as_ref().unwrap().line, 2);
+    assert_eq!(
+        project.config().theme(),
+        "novel",
+        "and the book still lays out"
+    );
+}
+
+#[test]
+fn the_wave_2_tables_are_read_and_their_mistakes_located() {
+    let (_folder, project) = book_with_config(
+        "title = \"T\"\ntheme = \"poetry\"\n\n[toc]\ndepth = 7\ntitel = \"x\"\n\n[chapter]\nstart = \"rigth-page\"\n",
+    );
+    assert_eq!(project.config().theme(), "poetry");
+    assert_eq!(project.config().toc.depth, None, "a bad depth falls back");
+    let all: Vec<String> = project
+        .diagnostics()
+        .iter()
+        .map(booker_project::format_diagnostic)
+        .collect();
+    let all = all.join("\n");
+    assert!(
+        all.contains("book.toml:5:9:") && all.contains("`toc.depth` should be 1, 2 or 3"),
+        "{all}"
+    );
+    assert!(
+        all.contains("unknown key `toc.titel`") && all.contains("did you mean `toc.title`?"),
+        "{all}"
+    );
+    assert!(
+        all.contains("book.toml:9:9:") && all.contains("did you mean `right-page`?"),
+        "{all}"
+    );
+    assert!(
+        !all.contains("not implemented"),
+        "theme, toc and chapter are implemented now: {all}"
+    );
+}

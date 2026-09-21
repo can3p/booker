@@ -6,7 +6,7 @@ Book authoring for people who want a good-looking book without learning typesett
 
 A Booker project is a plain folder: Markdown for the text, a few readable TOML files for how it should look. It lives in git, opens in any editor, and builds into a print-ready PDF. The layout engine is [Typst](https://typst.app), embedded in the application, so a 200-page novel lays out in about half a second.
 
-**Status: early, and not released.** A folder of Markdown becomes a printable PDF, from the command line or from the application window. Booker is developed locally for now and nothing has been published, so both run from a source checkout. What it cannot do yet is most of what makes a book look like a book: fonts, headings, images, page rules and templates all come later. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
+**Status: early, and not released.** A folder of Markdown becomes a printable PDF, from the command line or from the application window. Booker is developed locally for now and nothing has been published, so both run from a source checkout. The PDF is typeset like a book with no configuration — a table of contents, chapters opening on right-hand pages, justified and hyphenated text, typographic quotes and dashes — in one of four built-in themes (`novel`, `picture-book`, `poetry`, `paper`) chosen with `theme` in `book.toml`. What it cannot do yet is let you change the look beyond that: styles, page rules, pictures placed anywhere but between paragraphs, and more templates all come later. See [`docs/WAVE-LOG.md`](docs/WAVE-LOG.md) for what is finished and [`docs/PLAN.md`](docs/PLAN.md) §8 for where it is going.
 
 ## Start here
 
@@ -106,7 +106,7 @@ The editor is a plain text pane for now; live Markdown styling arrives in Wave 2
 
 ```
 my-book/
-├── book.toml      # title, author, language, chapter order, page size and margins
+├── book.toml      # title, author, language, theme, chapter order, page size and margins
 ├── content/       # the text, one Markdown file per chapter
 │   └── 01-the-first-chapter.md
 ├── assets/images/ # pictures that belong to this book

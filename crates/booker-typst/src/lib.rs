@@ -48,6 +48,7 @@ mod world;
 pub mod book;
 pub mod diagnostics;
 pub mod fonts;
+pub mod themes;
 
 pub use booker_core::{CompileRequest, CompileResult, Error, RenderRequest, Result};
 pub use engine::{Compilation, Engine};

@@ -150,9 +150,10 @@ hand from the Actions tab; the bundles are kept as artifacts for a week.
 Two kinds of signing are involved and they are not the same thing. The **updater** key is
 always used — without it an installed copy refuses the download — and it lives in
 `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. **Apple Developer ID
-and Windows Authenticode** are separate, cost money, and are not set up yet; the workflow
-already reads their secrets, so signed builds need no change here, only the certificates.
-Until then the first launch warns on both platforms.
+and Windows Authenticode** are separate, cost money, and are not set up yet. The workflow
+already reads the Apple secrets and uses them only when `APPLE_CERTIFICATE` is set, so signed
+macOS builds need the certificate and no change here. Windows signing is not wired at all yet
+and will need a step of its own. Until then the first launch warns on both platforms.
 
 ## Refusing to push to main
 

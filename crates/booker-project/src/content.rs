@@ -225,7 +225,7 @@ pub(crate) fn check_document(chapter: &Chapter, diagnostics: &mut Vec<Diagnostic
                 continue;
             }
             let suggestion = match closest(key, ATTRIBUTE_KEYS) {
-                Some(near) => format!("did you mean `{near}`? "),
+                Some(near) => format!("Did you mean `{near}`? "),
                 None => String::new(),
             };
             diagnostics.push(

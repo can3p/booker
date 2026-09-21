@@ -10,16 +10,17 @@ to do.
 | # | Tutorial | What you will have made | What it assumes |
 |---|---|---|---|
 | 01 | [Your first book](01-your-first-book.md) | A two-chapter book, written by you, built into a PDF | Nothing. It starts at installing `booker`. |
-| 02 | [The Booker window](02-the-app.md) | The same kind of book, made in the application, exported and kept up to date | Nothing. It starts at downloading the installer. |
+| 02 | [The Booker window](02-the-app.md) | The same kind of book, made in the application: chapters added and reordered, text and pages kept side by side | Nothing. It starts at installing the application. |
+| 03 | [Writing a book in Markdown](03-writing-in-markdown.md) | A short story with a picture, a table, a scene break and a link between chapters | The `booker` command, from tutorial 01. |
 
-Between them those two cover everything Booker can currently do. There are two ways to
+Between them those three cover everything Booker can currently do. There are two ways to
 use it — the `booker` command and the window — and they share one layout engine, so a
 book cannot come out differently depending on which you chose.
 
-What is *not* here yet: styling beyond the page size and margins, images, page rules,
-and anything about how a book looks that `book.toml` does not hold. Each arrives with a
-tutorial of its own — see [`../PLAN.md`](../PLAN.md) §8 for the order, and
-[`../WAVE-LOG.md`](../WAVE-LOG.md) for what has actually shipped.
+What is *not* here yet: choosing fonts and styling text beyond the four built-in themes,
+page rules and running heads, and pictures placed anywhere but between paragraphs. Each
+arrives with a tutorial of its own — see [`../PLAN.md`](../PLAN.md) §8 for the order,
+and [`../WAVE-LOG.md`](../WAVE-LOG.md) for what has actually shipped.
 
 ---
 

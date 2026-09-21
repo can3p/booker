@@ -16,7 +16,12 @@ nothing — it starts at installing Booker — and it is the quickest way to fin
 is. Everything below is the short version and the reference.
 
 **[The Booker window](docs/tutorials/02-the-app.md)** does the same in the application:
-install it, open a folder, watch the pages redraw as you type, export the PDF.
+open a folder, write with the pages beside you, click a page to find its text, add and
+reorder chapters, export the PDF.
+
+**[Writing a book in Markdown](docs/tutorials/03-writing-in-markdown.md)** is everything a
+book is made of — headings, quotes and dashes, scene breaks, pictures, tables, page breaks,
+links between chapters — and how to write each one.
 
 [`docs/tutorials/`](docs/tutorials/index.md) is the full list; between them the tutorials
 cover everything Booker can currently do.

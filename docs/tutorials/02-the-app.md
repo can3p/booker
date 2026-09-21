@@ -79,8 +79,13 @@ Three things appear:
 - **On the left, the chapters.** One row per file, with its title and its word count.
   The title is the first heading in the file, so `The Jar` comes from the `# The Jar`
   line rather than from the file name.
-- **In the middle, the text**, which you can edit.
-- **On the right, the pages**, drawn exactly as they will print.
+- **In the middle, the text**, which you can edit. It is Markdown, shown the way it
+  reads: `# The Jar` is set large, `*a word*` in italics, and the `#` and `*` themselves
+  stay in the text, faded, so you can always see what you typed.
+- **On the right, the pages**, drawn exactly as they will print, fitted to the width of
+  the pane. The buttons above them switch between **Width**, a whole **Page**, and a
+  size of your choosing with **−** and **+**; the number in between takes you back to
+  actual size.
 
 Along the bottom: the book's title, how many chapters and words it has, how many pages
 that came to, and whether everything is saved.
@@ -108,7 +113,42 @@ than it sounds: it means the file on disk is almost always the file you are look
 so anything else that reads your book — git, your editor, a spell-checker — sees your
 current words.
 
-## 4. Edit it somewhere else at the same time
+### Between the text and the pages
+
+**Click a line on a page, and the text jumps to it**: the chapter it belongs to opens if
+it was not already open, and the cursor lands on that line. It is the quickest way to
+get from "that sentence looks wrong" to the sentence.
+
+It works the other way too. **Move the cursor in the text, and the pages follow**: when
+you rest on a line, the page it is printed on scrolls into view, and a small blue mark
+beside the text shows where on the page that line landed.
+
+## 4. Add a chapter
+
+Below the chapter list is **+ Add a chapter**. Click it, type `The Garden`, and press
+Enter.
+
+A new chapter appears in the list, right after the one you had open, and opens in the
+editor with its title already in it: `# The Garden`. Write a sentence or two under it.
+
+Look at the pages now. With two chapters, the book has grown a **table of contents** on
+its first page, and each chapter **starts on a right-hand page**, the way printed novels
+do — so there are blank pages in between, left without a page number, exactly as a
+printer would leave them. Nobody asked for either; they are what a book looks like.
+
+When a chapter is selected, four small buttons appear under it:
+
+- **↑** and **↓** move it earlier or later in the book.
+- **Rename** changes its title — the `#` heading at the top of the file. (You can also
+  double-click a chapter to rename it.)
+- **Remove** takes it out of the book. Booker asks first, and even then **nothing is
+  deleted**: the file stays in `content/`, only the book stops including it.
+
+Every one of these is a small change to `book.toml`, which now lists the chapters in
+order. Open it in your text editor and you will find a `chapters = [ … ]` list — with
+your own comments, if you wrote any, exactly where you left them.
+
+## 5. Edit it somewhere else at the same time
 
 Leave Booker open. Open `content/01-the-jar.md` in your own text editor, change a word,
 and save.
@@ -122,7 +162,27 @@ it with git, switch branches, or point an AI assistant at it and ask it to fix t
 spelling in every chapter. Booker notices and catches up. Thirty files changing at once
 costs one redraw, not thirty.
 
-## 5. See what is wrong
+### When both of you change the same chapter
+
+Booker saves half a second after you stop typing, so this is rare — but try it. Type a
+few words into the chapter in Booker, and *immediately*, before it saves, change the
+same file in your text editor and save it there.
+
+Booker does not pick one and throw the other away. The editor is replaced by both
+versions side by side — **Yours, not saved yet** and **On disk now** — and nothing is
+saved until you choose:
+
+- **Keep mine** saves your version over the one on disk.
+- **Take the one on disk** puts their version in the editor and lets yours go.
+- **Keep both** leaves the file as it is on disk and adds your version as a new chapter
+  right after it, in a file of its own — `content/the-jar-my-version.md` — so you can
+  merge the two by hand. Your text is kept exactly as you wrote it, so the list shows two
+  chapters called *The Jar*; the second one is yours. Remove it when you have merged.
+
+This is also what happens if an assistant working in your book folder rewrites a
+chapter while you are in the middle of it.
+
+## 6. See what is wrong
 
 Along the bottom is a line that says **Problems: none**. Click it to open the panel.
 
@@ -140,10 +200,11 @@ the file, the line and what is wrong with it.
 Put `size = "5.5x8.5in"` back and the problem disappears.
 
 Every problem Booker can find is reported this way — with the file and the line, never
-as a message you have to guess about. There are only a few of them today; the ones
-about layout, images and styling arrive as those features do.
+as a message you have to guess about: a picture that is not there, a link to a heading
+that does not exist, a chapter file that prints nothing. The same list, word for word,
+is what `booker check` prints in a terminal.
 
-## 6. Export the PDF
+## 7. Export the PDF
 
 **File → Export PDF…**, or the **Export PDF…** button, then choose where to put it.
 
@@ -151,7 +212,7 @@ You now have a PDF you can print, email, or send to a printer. It is the same PD
 `booker build` makes from the command line — the window and the terminal use the same
 layout engine, so a book cannot look different depending on which one you used.
 
-## 7. Update to a new version
+## 8. Update to a new version
 
 Booker updates itself. Choose **Check for Updates…** — on a Mac it is under the
 **Booker** menu, elsewhere under **Help**.
@@ -170,13 +231,12 @@ signed by Apple or Microsoft: the two are separate things.
 
 So that you do not go hunting:
 
-- **The text pane is a plain one.** Markdown you type shows as Markdown — `# The Jar`
-  rather than a large heading. Styling the text as you write it is the next release.
-- **You cannot add or reorder chapters from the window.** Add a file to `content/` and
-  Booker picks it up; to change the order, list the files in `book.toml`.
-- **Nothing about how the book looks can be changed from the window** beyond what
-  `book.toml` holds — the page size and the margins. Fonts, headings, chapter openings
+- **Nothing about how the book looks can be changed from the window.** The look comes
+  from the book's theme — `novel`, `picture-book`, `poetry` or `paper`, set with `theme`
+  in `book.toml` — and the page size and margins there. Choosing fonts, styling headings
   and page rules all come later.
+- **Pictures go between paragraphs.** Placing one at a particular spot on a page comes
+  later; [the Markdown tutorial](03-writing-in-markdown.md) shows what you can do now.
 - **There is one window.** Opening a second book replaces the first.
 
 What you *can* do, today, is write a book in it and get a good-looking PDF out — which

@@ -327,7 +327,7 @@ fn an_attribute_nothing_reads_is_a_warning_that_suggests_the_right_key() {
     assert_eq!(found.len(), 2, "{found:#?}");
     assert!(found.iter().all(|d| d.severity == Severity::Warning));
     assert!(
-        found[0].message.contains("did you mean `break-before`"),
+        found[0].message.contains("Did you mean `break-before`"),
         "{}",
         found[0].message
     );
@@ -337,7 +337,7 @@ fn an_attribute_nothing_reads_is_a_warning_that_suggests_the_right_key() {
         (1, 7),
         "points at the braces, not the heading"
     );
-    assert!(found[1].message.contains("did you mean `width`"));
+    assert!(found[1].message.contains("Did you mean `width`"));
 }
 
 #[test]

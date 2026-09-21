@@ -210,6 +210,29 @@ pub fn closest<'a>(key: &str, candidates: &[&'a str]) -> Option<&'a str> {
         .filter(|(distance, candidate)| *distance <= max_distance(candidate))
         .min_by_key(|(distance, _)| *distance)
         .map(|(_, candidate)| candidate)
+        .or_else(|| unique_completion(&lowered, candidates))
+}
+
+/// A word cut short or half-remembered — `poem` for `poetry`, `marg` for
+/// `margins` — is too far from its candidate by edit distance, and yet
+/// obviously meant. When nothing is close, the one candidate sharing the
+/// longest beginning with what was typed is suggested, if that beginning is
+/// at least three letters and no other candidate shares as much.
+fn unique_completion<'a>(typed: &str, candidates: &[&'a str]) -> Option<&'a str> {
+    let shared = |candidate: &str| {
+        typed
+            .chars()
+            .zip(candidate.to_ascii_lowercase().chars())
+            .take_while(|(a, b)| a == b)
+            .count()
+    };
+    let best = candidates.iter().map(|c| shared(c)).max()?;
+    if best < 3 {
+        return None;
+    }
+    let mut sharing = candidates.iter().filter(|c| shared(c) == best);
+    let first = sharing.next()?;
+    sharing.next().is_none().then_some(*first)
 }
 
 fn max_distance(candidate: &str) -> usize {
@@ -272,5 +295,19 @@ future-feature = { enabled = true, tries = 3, names = ["a", "b"] }
         assert_eq!(value["enabled"].as_bool(), Some(true));
         assert_eq!(value["tries"].as_integer(), Some(3));
         assert_eq!(value["names"][1].as_str(), Some("b"));
+    }
+}
+
+#[cfg(test)]
+mod completion_tests {
+    use super::closest;
+
+    #[test]
+    fn a_word_cut_short_suggests_the_one_word_it_starts_like() {
+        let templates = ["novel", "picture-book", "poetry", "paper"];
+        assert_eq!(closest("poem", &templates), Some("poetry"));
+        assert_eq!(closest("pict", &templates), Some("picture-book"));
+        assert_eq!(closest("pa", &templates), None, "too short to guess");
+        assert_eq!(closest("xyz", &templates), None);
     }
 }

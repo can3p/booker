@@ -265,6 +265,14 @@ impl Writer<'_> {
         out.push_str("#show figure: set block(breakable: false)\n");
         out.push_str("#show figure.caption: set text(size: 0.85em)\n");
         out.push_str("#set quote(block: true)\n");
+        // In indented prose paragraphs touch, so a list or a quotation needs
+        // space of its own or the text after it runs straight into it.
+        if let Paragraphs::Indented { .. } = theme.paragraphs {
+            out.push_str("#show list: set block(above: 0.9em, below: 0.9em)\n");
+            out.push_str("#show enum: set block(above: 0.9em, below: 0.9em)\n");
+            out.push_str("#show quote.where(block: true): set block(above: 1em, below: 1em)\n");
+            out.push_str("#show table: set block(above: 1em, below: 1em)\n");
+        }
         out.push_str("#show raw: set text(size: 0.85em)\n");
 
         let weight = if theme.heading_bold {
@@ -583,9 +591,12 @@ impl Writer<'_> {
                 }
             }
             Inline::Image(image) => self.image(image),
-            // Soft breaks are spaces: a paragraph is one line of generated
-            // source, so no line of the author's text can ever start where
-            // Typst looks for a heading or a list.
+            // Soft breaks are spaces — or, in a theme that keeps the
+            // author's lines, line breaks — but never a newline in the
+            // generated source: a paragraph is one line of it, so no line
+            // of the author's text can start where Typst looks for a
+            // heading or a list.
+            Inline::SoftBreak { .. } if self.theme.line_breaks => self.out.push_str("#linebreak()"),
             Inline::SoftBreak { .. } => self.out.push(' '),
             Inline::HardBreak { .. } => self.out.push_str("#linebreak()"),
             Inline::Html { .. } | Inline::Unsupported { .. } => {}
@@ -778,6 +789,21 @@ mod tests {
             let typst = typst_of(&format!("{markdown}\n"));
             assert!(typst.contains(generated), "{markdown}: {typst}");
         }
+    }
+
+    #[test]
+    fn poetry_keeps_the_lines_the_poet_typed_and_prose_joins_them() {
+        let verse = "I found the moon\non the kitchen shelf\n";
+        let poem = typst_with("title = \"T\"\ntheme = \"poetry\"", &[verse]);
+        assert!(
+            poem.contains("I found the moon#linebreak()on the kitchen shelf"),
+            "{poem}"
+        );
+        let prose = typst_with(r#"title = "T""#, &[verse]);
+        assert!(
+            prose.contains("I found the moon on the kitchen shelf"),
+            "{prose}"
+        );
     }
 
     #[test]

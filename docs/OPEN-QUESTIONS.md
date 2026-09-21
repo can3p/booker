@@ -27,7 +27,8 @@ Format:
 - Needed by: Wave 2 (starter templates pick their fonts)
 - Options: a small set covering a serif for fiction, a text face for non-fiction, a friendly face for kids books, a sans for UI and captions, and a decorative face for initials. Licences must permit redistribution and embedding (OFL and similar).
 - Default we are proceeding with: Literata, EB Garamond, Source Serif 4, Inter, Atkinson Hyperlegible, Andika (kids), Cinzel Decorative (initials). The licence review was planned for Wave 1 and did not happen; today Booker bundles only Typst's own defaults, Libertinus Serif and DejaVu Sans Mono (`crates/booker-typst/fonts/NOTICE.txt`). It moves to Wave 2 track F, which is where the fonts are first needed.
-- Status: Open
+- Wave 2 (2026-09-21): the four built-in themes needed four families, and those are bundled — EB Garamond (novel, poetry), Source Serif 4 and Inter (paper), Andika (picture-book), all SIL OFL 1.1, from Google Fonts, 7.4 MB in the binary. **Literata was dropped**: its italic rendered upright in Typst 0.15.1 (`docs/FINDINGS.md`), and EB Garamond took its place. Atkinson Hyperlegible and Cinzel Decorative wait for the waves that need them (Wave 3 styles, drop caps).
+- Status: Open — answered for the built-in themes; what else to bundle is decided by the wave that needs it.
 
 ### Q-03 — Do print-on-demand targets need CMYK, ICC or PDF/X?
 - Raised: 2026-09-19, planning

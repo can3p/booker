@@ -51,6 +51,11 @@ pub struct Theme {
     /// Justified text, which also switches hyphenation on (Typst hyphenates
     /// justified text by default, in the book's language).
     pub justify: bool,
+    /// Keep the line breaks the author typed. Markdown joins the lines of a
+    /// paragraph into one; verse and picture-book text are written line by
+    /// line on purpose, and a person writing them expects to see the lines
+    /// they typed.
+    pub line_breaks: bool,
     pub heading_font: &'static str,
     /// Sizes of heading levels 1–3, in points. Deeper levels use level 3.
     pub heading_size_pt: [f64; 3],
@@ -78,6 +83,7 @@ pub const NOVEL: Theme = Theme {
     leading_em: 0.62,
     paragraphs: Paragraphs::Indented { indent_em: 1.3 },
     justify: true,
+    line_breaks: false,
     heading_font: "EB Garamond",
     heading_size_pt: [22.0, 14.0, 12.0],
     heading_bold: false,
@@ -98,6 +104,7 @@ pub const PICTURE_BOOK: Theme = Theme {
     paragraphs: Paragraphs::Spaced { gap_em: 0.8 },
     // Ragged text for young readers: even word spacing, no hyphens.
     justify: false,
+    line_breaks: true,
     heading_font: "Andika",
     heading_size_pt: [30.0, 22.0, 18.0],
     heading_bold: true,
@@ -118,6 +125,7 @@ pub const POETRY: Theme = Theme {
     paragraphs: Paragraphs::Spaced { gap_em: 0.9 },
     // A line of verse ends where the poet ended it.
     justify: false,
+    line_breaks: true,
     heading_font: "EB Garamond",
     heading_size_pt: [18.0, 13.0, 12.0],
     heading_bold: false,
@@ -137,6 +145,7 @@ pub const PAPER: Theme = Theme {
     leading_em: 0.62,
     paragraphs: Paragraphs::Spaced { gap_em: 0.55 },
     justify: true,
+    line_breaks: false,
     heading_font: "Inter",
     heading_size_pt: [16.0, 12.5, 10.5],
     heading_bold: true,

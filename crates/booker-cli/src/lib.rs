@@ -27,7 +27,7 @@ pub enum Command {
     New {
         /// Folder to create.
         path: PathBuf,
-        /// Starter template to use.
+        /// Starter template: novel, picture-book, poetry or paper.
         #[arg(long, default_value = "novel")]
         template: String,
         /// Title of the book. Taken from the folder name if not given.

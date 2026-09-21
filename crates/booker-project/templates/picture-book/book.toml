@@ -1,0 +1,23 @@
+# This is your book. Everything here can be changed by hand, by the
+# Booker app, or by an agent working in this folder — it is plain text on
+# purpose, and Booker keeps your comments and your key order when it writes.
+
+format = {{format}}          # the project format; Booker migrates this for you
+title = "{{title}}"
+# author = "Your name here"
+language = "en"
+theme = "picture-book"   # big friendly type, lines broken where you break them
+
+chapters = [
+    "content/01-the-story.md",
+]
+
+[page]
+size = "square"    # 8.5 × 8.5 inches, a common picture-book size
+facing = true
+
+[page.margins]
+top = "16mm"
+bottom = "16mm"
+inside = "18mm"
+outside = "16mm"

@@ -138,13 +138,19 @@ fn an_unknown_template_says_what_there_is() {
     let error = run(
         Command::New {
             path: directory.path().join("x"),
-            template: "picture-book".to_string(),
+            template: "picturebook".to_string(),
             title: None,
         },
         &mut out,
     )
     .expect_err("it must refuse");
-    assert!(error.to_string().contains("novel"), "{error}");
+    let message = error.to_string();
+    assert!(message.contains("novel, picture-book, poetry, paper"), "{message}");
+    assert!(message.contains("did you mean `picture-book`?"), "{message}");
+    assert!(
+        !directory.path().join("x").exists(),
+        "nothing is created for a template that does not exist"
+    );
 }
 
 #[test]

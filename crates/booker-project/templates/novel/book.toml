@@ -1,0 +1,33 @@
+# This is your book. Everything here can be changed by hand, by the
+# Booker app, or by an agent working in this folder — it is plain text on
+# purpose, and Booker keeps your comments and your key order when it writes.
+
+format = {{format}}          # the project format; Booker migrates this for you
+title = "{{title}}"
+# author = "Your name here"
+language = "en"
+theme = "novel"     # how the book is typeset: novel, picture-book, poetry or paper
+
+# Chapters are read in this order. Delete the list and Booker reads
+# `content/*.md` sorted by file name instead.
+chapters = [
+    "content/01-the-first-chapter.md",
+]
+
+[page]
+size = "a5"        # a4, a5, letter, trade, digest, square, or "5.5x8.5in"
+facing = true      # margins swap on left and right pages, as in a printed book
+
+[page.margins]
+top = "18mm"
+bottom = "20mm"
+inside = "20mm"
+outside = "15mm"
+
+# The theme decides these; uncomment a line to decide for yourself.
+# [toc]
+# enabled = true           # a table of contents; on when there is more than one chapter
+# depth = 1                # how many levels of headings it lists, 1 to 3
+#
+# [chapter]
+# start = "right-page"     # new-page, right-page (as in printed novels) or continue

@@ -71,6 +71,22 @@ Next:
 leave `--title` out, Booker makes a title out of the folder name — `the-moon-jar` would
 become *The Moon Jar* — which is usually close enough to start with.
 
+The book starts from a *template*. `novel` is the one you get without asking, and the
+right one for this book: chapters, flowing text, a table of contents. There are three
+more — `picture-book` for a square book with a picture and a few big lines on each
+page, `poetry` for poems that keep their line breaks, and `paper` for an essay or a
+report — and you choose one with `--template`. Get the name slightly wrong and Booker
+says what it has rather than guessing:
+
+```console
+$ booker new my-poems --template poem
+booker: there is no template called `poem`; the templates are: novel, picture-book, poetry, paper — did you mean `poetry`?
+$ echo $?
+2
+```
+
+Nothing was created: the exit code `2` means the command could not run at all.
+
 That folder is now your book, and it is the whole book. There is no database, no
 hidden file somewhere else, nothing you can lose by moving it. Step inside it:
 
@@ -102,8 +118,8 @@ $ booker build .
 The Moon in a Jar — format 1, language en
 Page 148mm × 210mm, facing, margins 18mm/20mm/20mm/15mm
 Chapters: 1
-  content/01-the-first-chapter.md  67 words, 1 heading, 0 images   “The First Chapter”
-  67 words and 0 images in all
+  content/01-the-first-chapter.md  74 words, 1 heading, 0 images   “The First Chapter”
+  74 words and 0 images in all
 Problems: none
 Built build/the-moon-in-a-jar.pdf — 1 pages in … ms
 ```

@@ -11,25 +11,60 @@ use booker_core::{Error, Result, FORMAT_VERSION};
 
 use crate::write::write_atomic;
 
-/// The starter projects this build can generate.
+/// The starter projects this build can generate. Each is a folder under
+/// `crates/booker-project/templates/`, compiled into the binary, and each
+/// picks the built-in theme of the same name (`booker_typst::themes`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Template {
-    /// Flowing text, A5, facing pages: a novel, a memoir, a short story.
+    /// Flowing text, A5, facing pages, chapters on the right: a novel, a
+    /// memoir, a short story.
     Novel,
+    /// A square book of pictures with a few lines each, in big friendly
+    /// type, one picture per page.
+    PictureBook,
+    /// Poems, each line kept where the poet broke it, each poem on its own
+    /// page.
+    Poetry,
+    /// A4 on one side, sections running on: an essay, a report, a school
+    /// paper.
+    Paper,
 }
 
-impl Template {
-    pub const NAMES: &'static [&'static str] = &["novel"];
+/// A template name that does not exist. Not a file problem, so it names no
+/// file: the mistake is in what was typed after `--template`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnknownTemplate {
+    pub name: String,
+}
 
-    pub fn from_name(name: &str) -> Result<Template> {
+impl std::fmt::Display for UnknownTemplate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "there is no template called `{}`; the templates are: {}",
+            self.name,
+            Template::NAMES.join(", ")
+        )?;
+        if let Some(near) = crate::toml_tree::closest(&self.name, Template::NAMES) {
+            write!(f, " — did you mean `{near}`?")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for UnknownTemplate {}
+
+impl Template {
+    pub const NAMES: &'static [&'static str] = &["novel", "picture-book", "poetry", "paper"];
+
+    pub fn from_name(name: &str) -> std::result::Result<Template, UnknownTemplate> {
         match name.trim().to_ascii_lowercase().as_str() {
             "novel" => Ok(Template::Novel),
-            other => Err(Error::Project {
-                path: PathBuf::from("."),
-                message: format!(
-                    "unknown template `{other}`; this build has: {}",
-                    Template::NAMES.join(", ")
-                ),
+            "picture-book" => Ok(Template::PictureBook),
+            "poetry" => Ok(Template::Poetry),
+            "paper" => Ok(Template::Paper),
+            _ => Err(UnknownTemplate {
+                name: name.trim().to_string(),
             }),
         }
     }
@@ -37,6 +72,33 @@ impl Template {
     pub fn name(self) -> &'static str {
         match self {
             Template::Novel => "novel",
+            Template::PictureBook => "picture-book",
+            Template::Poetry => "poetry",
+            Template::Paper => "paper",
+        }
+    }
+
+    /// The template's own files, as `(project-relative path, text)`, with
+    /// `{{title}}` and `{{format}}` still to be filled in.
+    fn files(self) -> &'static [(&'static str, &'static str)] {
+        macro_rules! files {
+            ($dir:literal: $($path:literal),+ $(,)?) => {
+                &[$(($path, include_str!(concat!("../templates/", $dir, "/", $path)))),+]
+            };
+        }
+        match self {
+            Template::Novel => files!("novel": "book.toml", "content/01-the-first-chapter.md"),
+            Template::PictureBook => files!(
+                "picture-book": "book.toml",
+                "content/01-the-story.md",
+                "assets/images/moon.svg",
+            ),
+            Template::Poetry => files!(
+                "poetry": "book.toml",
+                "content/01-how-to-write-a-poem-here.md",
+                "content/02-the-moon-in-a-jar.md",
+            ),
+            Template::Paper => files!("paper": "book.toml", "content/01-the-paper.md"),
         }
     }
 }
@@ -73,23 +135,40 @@ pub fn create(root: &Path, template: Template, title: Option<&str>) -> Result<Cr
     let title = title
         .map(str::to_string)
         .unwrap_or_else(|| title_from_folder(root));
-
-    let files: Vec<(PathBuf, String)> = match template {
-        Template::Novel => vec![
-            (PathBuf::from(crate::config::BOOK_TOML), book_toml(&title)),
-            (
-                PathBuf::from("content").join("01-the-first-chapter.md"),
-                first_chapter(&title),
-            ),
-            (
-                PathBuf::from("assets").join("images").join(".gitkeep"),
-                String::new(),
-            ),
-            (PathBuf::from(".gitignore"), GITIGNORE.to_string()),
-            (PathBuf::from(".gitattributes"), GITATTRIBUTES.to_string()),
-            (PathBuf::from("AGENTS.md"), agents_md(&title)),
-        ],
+    // In `book.toml` the title sits inside a TOML string, so a quote or a
+    // backslash in it must be escaped there — and only there.
+    let toml_title = title.replace('\\', "\\\\").replace('"', "\\\"");
+    let fill = |path: &str, text: &str| {
+        let title = if path == crate::config::BOOK_TOML {
+            &toml_title
+        } else {
+            &title
+        };
+        text.replace("{{title}}", title)
+            .replace("{{format}}", &FORMAT_VERSION.to_string())
     };
+
+    let mut files: Vec<(PathBuf, String)> = template
+        .files()
+        .iter()
+        .map(|(path, text)| (PathBuf::from(path), fill(path, text)))
+        .collect();
+    if !files
+        .iter()
+        .any(|(path, _)| path.starts_with("assets/images"))
+    {
+        // An empty folder does not survive git; this keeps the place for
+        // pictures visible from the first commit.
+        files.push((
+            PathBuf::from("assets").join("images").join(".gitkeep"),
+            String::new(),
+        ));
+    }
+    files.extend([
+        (PathBuf::from(".gitignore"), GITIGNORE.to_string()),
+        (PathBuf::from(".gitattributes"), GITATTRIBUTES.to_string()),
+        (PathBuf::from("AGENTS.md"), agents_md(&title)),
+    ]);
 
     let mut written = Vec::new();
     for (relative, contents) in files {
@@ -127,58 +206,6 @@ fn title_from_folder(root: &Path) -> String {
     }
 }
 
-fn book_toml(title: &str) -> String {
-    format!(
-        r#"# This is your book. Everything here can be changed by hand, by the
-# Booker app, or by an agent working in this folder — it is plain text on
-# purpose, and Booker keeps your comments and your key order when it writes.
-
-format = {FORMAT_VERSION}          # the project format; Booker migrates this for you
-title = "{title}"
-# author = "Your name here"
-language = "en"
-
-# Chapters are read in this order. Delete the list and Booker reads
-# `content/*.md` sorted by file name instead.
-chapters = [
-    "content/01-the-first-chapter.md",
-]
-
-[page]
-size = "a5"        # a4, a5, letter, trade, digest, square, or "5.5x8.5in"
-facing = true      # margins swap on left and right pages, as in a printed book
-
-[page.margins]
-top = "18mm"
-bottom = "20mm"
-inside = "20mm"
-outside = "15mm"
-"#
-    )
-}
-
-fn first_chapter(title: &str) -> String {
-    format!(
-        r#"# The First Chapter
-
-Welcome to *{title}*. This file is ordinary Markdown: write here, save, and
-the page on the right changes.
-
-A second paragraph, so the page has something to lay out. Headings, **bold**,
-*italic*, lists, quotes and images all work:
-
-> A quote sits like this.
-
-- one thing
-- another thing
-
-Put pictures in `assets/images/` and use them like this, once you have one:
-
-<!-- ![A tulip in May](assets/images/tulips.jpg) -->
-"#
-    )
-}
-
 const GITIGNORE: &str = r#"# Booker's derived files. Everything here can be rebuilt from the text,
 # and deleting it at any moment is safe.
 /build/
@@ -190,6 +217,7 @@ const GITIGNORE: &str = r#"# Booker's derived files. Everything here can be rebu
 const GITATTRIBUTES: &str = r#"# Keep text files diffable and identical on every machine.
 *.md text eol=lf
 *.toml text eol=lf
+*.svg text eol=lf
 "#;
 
 fn agents_md(title: &str) -> String {
@@ -204,7 +232,7 @@ anything else, so editing a file *is* editing the book.
 
 | Path | What it is |
 |---|---|
-| `book.toml` | Title, author, language, chapter order, page setup, format version |
+| `book.toml` | Title, author, language, theme, chapter order, table of contents, page setup, format version |
 | `content/*.md` | The text, one file per chapter, ordinary Markdown |
 | `assets/images/` | Pictures the chapters point at |
 | `build/`, `.booker/` | Generated. Never edit, never commit; safe to delete |
@@ -255,10 +283,23 @@ mod tests {
     }
 
     #[test]
-    fn unknown_templates_say_what_there_is() {
-        let error = Template::from_name("picture-book").unwrap_err();
-        let message = error.to_string();
-        assert!(message.contains("unknown template"), "{message}");
-        assert!(message.contains("novel"), "{message}");
+    fn unknown_templates_say_what_there_is_and_suggest_the_nearest() {
+        let message = Template::from_name("picturebook").unwrap_err().to_string();
+        assert_eq!(
+            message,
+            "there is no template called `picturebook`; the templates are: novel, \
+             picture-book, poetry, paper — did you mean `picture-book`?"
+        );
+        assert!(
+            !message.starts_with('.'),
+            "it names no file, because no file is involved"
+        );
+    }
+
+    #[test]
+    fn every_template_name_round_trips() {
+        for name in Template::NAMES {
+            assert_eq!(Template::from_name(name).unwrap().name(), *name);
+        }
     }
 }

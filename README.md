@@ -68,7 +68,7 @@ booker build ~/books/my-book
 
 | Command | What it does |
 |---|---|
-| `booker new <path> [--title <title>] [--template novel]` | Create a book project. `novel` is the only template so far. |
+| `booker new <path> [--title <title>] [--template <name>]` | Create a book project from a template: `novel` (the default), `picture-book`, `poetry` or `paper`. Each starts with sample text that says how to use it, and its own theme. |
 | `booker build <path>` | Load the project, report any problems, and write `build/<title>.pdf`. |
 
 `booker build` exits `0` when the book is clean, `1` when the project has errors, and `2` when the command itself could not run.

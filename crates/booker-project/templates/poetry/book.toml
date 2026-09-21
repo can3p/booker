@@ -1,0 +1,26 @@
+# This is your book. Everything here can be changed by hand, by the
+# Booker app, or by an agent working in this folder — it is plain text on
+# purpose, and Booker keeps your comments and your key order when it writes.
+
+format = {{format}}          # the project format; Booker migrates this for you
+title = "{{title}}"
+# author = "Your name here"
+language = "en"
+theme = "poetry"   # each line of a poem stays a line, and nothing is justified
+
+# One file per poem keeps each poem on its own page. You can also put several
+# poems in one file and start each on a new page with {break-before=page}.
+chapters = [
+    "content/01-how-to-write-a-poem-here.md",
+    "content/02-the-moon-in-a-jar.md",
+]
+
+[page]
+size = "a5"
+facing = true
+
+[page.margins]
+top = "22mm"
+bottom = "22mm"
+inside = "22mm"
+outside = "18mm"

@@ -164,7 +164,7 @@ Extend `01-your-first-book.md` for the terminal: choosing a template, what the t
 
 ## Found during the wave
 
-- **`THIRD-PARTY.md` lists no JavaScript.** It covers the Rust crates and the fonts, but the window bundles Svelte and Tauri's JavaScript API (since Wave 1) and now CodeMirror, all MIT, whose licences ask for their notice to travel with the software. `cargo xtask third-party` must learn to read the app's production dependencies before the wave closes.
+- **`THIRD-PARTY.md` listed no JavaScript.** It covered the Rust crates and the fonts, but the window bundles Svelte and Tauri's JavaScript API (since Wave 1) and now CodeMirror, all MIT, whose licences ask for their notice to travel with the software. ~~`cargo xtask third-party` must learn to read the app's production dependencies.~~ Done: it reads `pnpm licenses list --prod`, and CI checks that half in the `app` job. Svelte moved to `dependencies`, which is where a package whose runtime ships belongs.
 
 ## Exit criteria
 

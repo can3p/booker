@@ -165,6 +165,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm test
+      # The JavaScript half of THIRD-PARTY.md needs the installed
+      # node_modules, which only this job has; `deps` checks the rest.
+      - name: Third-party notices are current (JavaScript)
+        run: cargo xtask third-party --check --only javascript
       # A bundle that does not build is a release that does not happen.
       - run: pnpm build
 
@@ -191,5 +195,5 @@ jobs:
           version=0.20.2
           curl -fsSL "https://github.com/EmbarkStudios/cargo-deny/releases/download/${version}/cargo-deny-${version}-x86_64-unknown-linux-musl.tar.gz" \
             | tar -xz --strip-components=1 -C /usr/local/bin "cargo-deny-${version}-x86_64-unknown-linux-musl/cargo-deny"
-      - name: Third-party notices are current
-        run: cargo xtask third-party --check
+      - name: Third-party notices are current (fonts and Rust crates)
+        run: cargo xtask third-party --check --only rust

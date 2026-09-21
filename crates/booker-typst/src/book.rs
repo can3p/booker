@@ -107,6 +107,19 @@ fn write_block(block: &Block, depth: usize, out: &mut String) {
             out.push_str("\n\n");
         }
         Block::ThematicBreak { .. } => out.push_str("#line(length: 100%)\n\n"),
+        // Track B lays these out properly; until then nothing inside them
+        // is dropped.
+        Block::Div(div) => {
+            for inner in &div.blocks {
+                write_block(inner, depth, out);
+            }
+        }
+        Block::Table(table) => {
+            for cell in table.head.iter().chain(table.rows.iter().flatten()) {
+                write_inlines(&cell.inlines, out);
+                out.push_str("\n\n");
+            }
+        }
         // Raw HTML has no meaning in a PDF until the whitelisted subset
         // exists (Wave 3). Dropping it silently would be worse than leaving
         // the gap visible, but printing markup would be worse still.
@@ -189,6 +202,13 @@ fn write_inlines(inlines: &[Inline], out: &mut String) {
                     out.push_str(&format!(", caption: [{}])\n", escape_markup(&caption)));
                 }
             }
+            Inline::Strikethrough { children, .. } => {
+                out.push_str("#strike[");
+                write_inlines(children, out);
+                out.push(']');
+            }
+            Inline::Span(span) => write_inlines(&span.children, out),
+            Inline::Unsupported { .. } => {}
             Inline::SoftBreak { .. } => out.push('\n'),
             Inline::HardBreak { .. } => out.push_str(" \\\n"),
             Inline::Html { .. } => {}

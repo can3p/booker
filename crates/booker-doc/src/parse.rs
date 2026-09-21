@@ -7,13 +7,17 @@
 //! range slices back out of the source to the text that produced it. We keep
 //! those ranges verbatim; nothing in this file invents a position.
 
-use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{
+    Alignment as CmarkAlignment, CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag,
+    TagEnd,
+};
 
 use crate::model::{
-    Attributes, Block, CodeBlock, Document, Heading, Image, Inline, Link, List, ListItem,
-    Paragraph, Quote,
+    Alignment, Attributes, Block, CodeBlock, Document, Heading, Image, Inline, Link, List,
+    ListItem, Paragraph, Quote, Table, TableCell,
 };
 use crate::span::Span;
+use crate::{divs, inlines};
 
 /// Parse a Markdown file into the document model.
 ///
@@ -23,14 +27,24 @@ use crate::span::Span;
 pub fn parse(source: &str) -> Document {
     let mut options = Options::empty();
     // `# Heading {#id .class}` — part of Booker's attribute syntax
-    // (`PLAN.md` §5.3) that the parser already understands. The rest of the
-    // syntax (images, spans, fenced divs) is Wave 1, and lands as a pass
-    // over these same spans.
+    // (`PLAN.md` §5.3) that the parser already understands. The rest of it
+    // — images, `[spans]{…}`, `:::` divs — is added around the parser, by
+    // `divs` and `inlines`, keeping these same spans.
     options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TABLES);
+    // Footnotes are not laid out until Wave 8, but recognising them means a
+    // `[^1]` is reported (`BK-DOC-002`) instead of printed as-is. Math is
+    // deliberately *not* switched on: "it cost $5 and $6" must stay prose.
+    options.insert(Options::ENABLE_FOOTNOTES);
+
+    // Fence lines are blanked, byte for byte, so the parser sees a blank
+    // line there and every offset stays true to the author's file.
+    let (masked, fences) = divs::find(source, options);
 
     let mut stack: Vec<Frame> = vec![Frame::new(FrameKind::Root, Span::new(0, source.len()))];
 
-    for (event, range) in Parser::new_ext(source, options).into_offset_iter() {
+    for (event, range) in Parser::new_ext(&masked, options).into_offset_iter() {
         let span = Span::from(range);
         match event {
             Event::Start(tag) => stack.push(Frame::new(FrameKind::from_tag(tag), span)),
@@ -87,9 +101,13 @@ pub fn parse(source: &str) -> Document {
             Event::SoftBreak => push_inline(&mut stack, Inline::SoftBreak { span }),
             Event::HardBreak => push_inline(&mut stack, Inline::HardBreak { span }),
             Event::Rule => push_block(&mut stack, Block::ThematicBreak { span }),
-            other => push_block(
+            // Everything else — a footnote reference, a task-list checkbox —
+            // happens in the middle of text. Pushed as a *block*, it used to
+            // land in a paragraph's block list, which nothing reads, and
+            // vanish without a trace.
+            other => push_inline(
                 &mut stack,
-                Block::Unsupported {
+                Inline::Unsupported {
                     span,
                     kind: unsupported_name(&other).to_string(),
                 },
@@ -110,8 +128,10 @@ pub fn parse(source: &str) -> Document {
     let root = stack
         .pop()
         .unwrap_or_else(|| Frame::new(FrameKind::Root, Span::new(0, source.len())));
+    let mut blocks = divs::assemble(root.blocks, fences, source.len());
+    inlines::attach(&mut blocks, source);
     Document {
-        blocks: root.blocks,
+        blocks,
         span: Span::new(0, source.len()),
     }
 }
@@ -130,6 +150,9 @@ enum Built {
     Block(Block),
     Item(ListItem),
     Inline(Inline),
+    Cell(TableCell),
+    Row(Vec<TableCell>),
+    Head(Vec<TableCell>),
 }
 
 fn attach(stack: &mut [Frame], built: Built) {
@@ -140,6 +163,9 @@ fn attach(stack: &mut [Frame], built: Built) {
         Built::Block(block) => parent.blocks.push(block),
         Built::Item(item) => parent.items.push(item),
         Built::Inline(inline) => parent.inlines.push(inline),
+        Built::Cell(cell) => parent.cells.push(cell),
+        Built::Row(row) => parent.rows.push(row),
+        Built::Head(head) => parent.head = head,
     }
 }
 
@@ -166,6 +192,11 @@ enum FrameKind {
     HtmlBlock,
     Emphasis,
     Strong,
+    Strikethrough,
+    Table { alignments: Vec<Alignment> },
+    TableHead,
+    TableRow,
+    TableCell,
     Link { url: String, title: Option<String> },
     Image { url: String, title: Option<String> },
     Unsupported { kind: String },
@@ -221,6 +252,21 @@ impl FrameKind {
             },
             Tag::Emphasis => FrameKind::Emphasis,
             Tag::Strong => FrameKind::Strong,
+            Tag::Strikethrough => FrameKind::Strikethrough,
+            Tag::Table(alignments) => FrameKind::Table {
+                alignments: alignments
+                    .into_iter()
+                    .map(|alignment| match alignment {
+                        CmarkAlignment::None => Alignment::None,
+                        CmarkAlignment::Left => Alignment::Left,
+                        CmarkAlignment::Center => Alignment::Center,
+                        CmarkAlignment::Right => Alignment::Right,
+                    })
+                    .collect(),
+            },
+            Tag::TableHead => FrameKind::TableHead,
+            Tag::TableRow => FrameKind::TableRow,
+            Tag::TableCell => FrameKind::TableCell,
             Tag::Link {
                 dest_url, title, ..
             } => FrameKind::Link {
@@ -277,6 +323,9 @@ struct Frame {
     items: Vec<ListItem>,
     inlines: Vec<Inline>,
     text: String,
+    cells: Vec<TableCell>,
+    rows: Vec<Vec<TableCell>>,
+    head: Vec<TableCell>,
 }
 
 impl Frame {
@@ -288,6 +337,9 @@ impl Frame {
             items: Vec::new(),
             inlines: Vec::new(),
             text: String::new(),
+            cells: Vec::new(),
+            rows: Vec::new(),
+            head: Vec::new(),
         }
     }
 
@@ -358,6 +410,22 @@ impl Frame {
             FrameKind::Strong => Built::Inline(Inline::Strong {
                 span,
                 children: self.inlines,
+            }),
+            FrameKind::Strikethrough => Built::Inline(Inline::Strikethrough {
+                span,
+                children: self.inlines,
+            }),
+            FrameKind::Table { alignments } => Built::Block(Block::Table(Table {
+                alignments,
+                head: self.head,
+                rows: self.rows,
+                span,
+            })),
+            FrameKind::TableHead => Built::Head(self.cells),
+            FrameKind::TableRow => Built::Row(self.cells),
+            FrameKind::TableCell => Built::Cell(TableCell {
+                inlines: self.inlines,
+                span,
             }),
             FrameKind::Link { url, title } => Built::Inline(Inline::Link(Link {
                 url,

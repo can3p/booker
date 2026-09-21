@@ -307,3 +307,56 @@ fn chapters_fall_back_to_content_in_file_name_order() {
         "sorted by name, and only Markdown"
     );
 }
+
+/// A book in a temporary folder with one chapter, for rules that are about
+/// what a chapter says rather than about the fixture's broken files.
+fn book_with_chapter(text: &str) -> (tempfile::TempDir, Project) {
+    let folder = tempfile::tempdir().unwrap();
+    std::fs::write(folder.path().join("book.toml"), "title = \"T\"\n").unwrap();
+    std::fs::create_dir(folder.path().join("content")).unwrap();
+    std::fs::write(folder.path().join("content/01.md"), text).unwrap();
+    let project = Project::load(folder.path()).unwrap();
+    (folder, project)
+}
+
+#[test]
+fn an_attribute_nothing_reads_is_a_warning_that_suggests_the_right_key() {
+    let (_folder, project) =
+        book_with_chapter("# One {break-befor=page}\n\n![Cat](cat.png){widht=50%}\n");
+    let found = find(&project, rules::UNKNOWN_ATTRIBUTE);
+    assert_eq!(found.len(), 2, "{found:#?}");
+    assert!(found.iter().all(|d| d.severity == Severity::Warning));
+    assert!(
+        found[0].message.contains("did you mean `break-before`"),
+        "{}",
+        found[0].message
+    );
+    let source = found[0].source.as_ref().unwrap();
+    assert_eq!(
+        (source.line, source.column),
+        (1, 7),
+        "points at the braces, not the heading"
+    );
+    assert!(found[1].message.contains("did you mean `width`"));
+}
+
+#[test]
+fn markdown_that_is_kept_but_not_laid_out_is_reported_where_it_is() {
+    let (_folder, project) = book_with_chapter(
+        "Text.[^1]\n\n<div>raw</div>\n\n<!-- a note to self -->\n\n[^1]: The note.\n",
+    );
+    let found = find(&project, rules::NOT_LAID_OUT);
+    let lines: Vec<(u32, &str)> = found
+        .iter()
+        .map(|d| (d.source.as_ref().unwrap().line, d.message.as_str()))
+        .collect();
+    assert_eq!(
+        found.len(),
+        3,
+        "reference, HTML, definition — not the comment: {lines:#?}"
+    );
+    assert!(lines[0].1.starts_with("a footnote reference"), "{lines:#?}");
+    assert_eq!(lines[1].0, 3);
+    assert!(lines[1].1.starts_with("HTML"));
+    assert!(lines[2].1.starts_with("a footnote"));
+}

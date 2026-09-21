@@ -86,6 +86,7 @@ impl Project {
         let chapters = content::discover(&root, &config, &config_file, &mut diagnostics);
         for chapter in &chapters {
             content::check_images(&root, chapter, &mut diagnostics);
+            content::check_document(chapter, &mut diagnostics);
         }
 
         sort_diagnostics(&mut diagnostics);

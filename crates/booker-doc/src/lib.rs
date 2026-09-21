@@ -17,15 +17,20 @@
 //! assert!(matches!(document.blocks[1], Block::Paragraph(_)));
 //! ```
 
+mod attributes;
+mod divs;
+mod inlines;
 mod model;
 mod parse;
 mod span;
 
+pub use attributes::ATTRIBUTE_KEYS;
+
 pub use booker_core::{Diagnostic, Error, Result, SourceLocation};
 
 pub use model::{
-    Attributes, Block, CodeBlock, Document, Heading, Image, Inline, Link, List, ListItem, Node,
-    Paragraph, Quote,
+    Alignment, Attributes, Block, CodeBlock, Div, Document, Heading, Image, Inline, InlineSpan,
+    Link, List, ListItem, Node, Paragraph, Quote, Table, TableCell,
 };
 pub use span::{LineIndex, Span};
 

@@ -329,13 +329,13 @@ Key technical choices:
 - Hosting: `latest.json` / `beta.json` as GitHub Release assets (a static endpoint, no server). CrabNebula Cloud is an option later if we need download stats or staged rollouts.
 - Linux: AppImage updates itself; deb and rpm are supported by the updater too. Flathub is optional later (it updates through Flatpak).
 - The format version in `book.toml` is checked against the app version. If an old app opens a newer project, it offers to update the app.
-- Every wave ends with a tagged release that **older installed builds pick up through the updater**, which tests the update path on every release.
+- Every wave ends with a tagged release that **older installed builds pick up through the updater**, which tests the update path on every release. **Paused:** until distribution resumes (`docs/OPEN-QUESTIONS.md` Q-13), waves end with a merge and no release, and the first release after the pause is the first one anyone installs.
 
 ---
 
 ## 8. Development waves
 
-From Wave 1 on, each wave ends with a signed, installable build for macOS, Windows and Linux, delivered through the updater, **and with the tutorials that teach whatever it added** (`docs/requirements.md`; `AGENTS.md` §4). Each wave has a **contracts** step (done by the lead model, about 1 day), then **parallel tracks** in separate git worktrees, then an **integration and release** step.
+From Wave 1 on, each wave ends with a signed, installable build for macOS, Windows and Linux, delivered through the updater (paused for now — §7 and Q-13), **and with the tutorials that teach whatever it added** (`docs/requirements.md`; `AGENTS.md` §4). Each wave has a **contracts** step (done by the lead model, about 1 day), then **parallel tracks** in separate git worktrees, then an **integration and release** step.
 
 Model tiers used below:
 - **L (large: Opus):** architecture, contracts, solver, codegen core, tricky integration.
@@ -349,8 +349,8 @@ The core (engine, project format, `booker new` and `booker build`), continuous i
 
 Two decisions made in those waves that still constrain everything below: the Typst engine is kept alive per open project, because the incremental recompile is what makes a live preview possible at all (`docs/FINDINGS.md`), and nothing in CI runs on a schedule — every check runs on push and pull request, with the three-platform test matrix widening only on pull requests into `main`.
 
-### Wave 1 — merged, release outstanding
-The desktop application and the release pipeline: a window that opens a book folder, edits it, draws its pages and exports a PDF, and installers for macOS, Windows and Linux that update themselves. The one step left is the first release and the check that it updates itself (`docs/waves/wave-1.md`, "What remains"); Wave 2 starts after it. What it shipped, what it deviated from and what it cost is in [`docs/WAVE-LOG.md`](WAVE-LOG.md); its brief remains in `docs/waves/wave-1.md`.
+### Wave 1 ✅ done
+The desktop application and the release pipeline: a window that opens a book folder, edits it, draws its pages and exports a PDF, and a pipeline that builds installers for macOS, Windows and Linux with a signed updater. No release was made: distribution is paused (`docs/OPEN-QUESTIONS.md` Q-13). What it shipped, what it deviated from and what it cost is in [`docs/WAVE-LOG.md`](WAVE-LOG.md); its brief remains in `docs/waves/wave-1.md`.
 
 Three decisions taken there that constrain what follows: there is exactly one translation from a book to pages (`booker_typst::book`, behind `Engine::set_book`) and both the window and the CLI go through it; the application keeps one engine per open project, because the memoized compiler is what makes the preview incremental; and an outside change to the folder is a reload, never a merge, because everything the window holds is derived from files that something else may have rewritten.
 
@@ -680,7 +680,7 @@ Settled (2026-09-19):
 7. **`main` is protected by a repository ruleset** ("protect main"): no deletion, no force-push, a linear history, and every change arrives through a pull request whose `fmt`, `clippy`, `test (ubuntu-latest)`, `docs`, `bindings` and `deps` checks are green. It is a ruleset rather than the older branch-protection settings, so it is read with `gh api repos/can3p/booker/rules/branches/main`.
 8. **A pull request into `main` merges by rebase**, the only method the ruleset allows, because a linear history is required. A wave therefore arrives on `main` as its own commits rather than as one squashed commit or a merge bubble, which is what lets the wave log point at them (§2).
 
-Still open: tracked in `docs/OPEN-QUESTIONS.md`, each with the default we proceed with in the meantime. The ones outstanding today are the final app name and bundle identifier (must be settled before the first public release), the bundled font set, whether print targets need CMYK or PDF/X, spell-checking, and how shared templates are distributed.
+Still open: tracked in `docs/OPEN-QUESTIONS.md`, each with the default we proceed with in the meantime. The ones outstanding today are the final app name and bundle identifier (must be settled before the first public release), the bundled font set, when distribution resumes, whether print targets need CMYK or PDF/X, spell-checking, and how shared templates are distributed.
 
 ## 14. Parallel development with git worktrees
 

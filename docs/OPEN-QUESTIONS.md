@@ -116,3 +116,11 @@ Format:
 - Options: build it now; build it when somebody asks for a beta; or decide that betas are always installed by hand and drop the channel idea.
 - Default we are proceeding with: wait. The machinery is a day's work whenever it is wanted, and building a channel nobody has used yet means guessing at how people will want to move between them — including the awkward part, which is going back to stable from a beta whose version number is higher.
 - Status: Open
+
+### Q-13 — When does Booker start being distributed?
+- Raised: 2026-09-21, Wave 1 / release
+- Needed by: the first person who is meant to install Booker rather than build it
+- Context: Wave 1 built the release pipeline and the signed updater. Its first tagged build failed on macOS and Windows; once fixed, a dry run built all four targets. Apple and Windows signing secrets do not exist.
+- Decision so far: **2026-09-21, the owner: keep the updater, but focus on local development, not distribution, for the time being.** No release is made, `AGENTS.md` §4 criteria 5 and 6 are not checked, and waves are not tagged.
+- Open: when distribution resumes, and whether signing certificates come first. The first release after the pause also carries the update check Wave 1 never ran (`CONTRIBUTING.md`, "Making a release").
+- Status: Open

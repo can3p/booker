@@ -16,8 +16,7 @@ can both have it open.
 
 ## 1. Install Booker
 
-> **Not yet.** Booker's first release, `v0.2.0`, is being prepared and the releases page
-> below is still empty. Until it appears, run the window from a copy of the source instead —
+> **Not yet.** Booker has not been released, and the releases page below is still empty. Until it appears, run the window from a copy of the source instead —
 > [`CONTRIBUTING.md`](../../CONTRIBUTING.md) says how — and pick this tutorial up at step 2.
 
 Go to <https://github.com/can3p/booker/releases>, open the newest release, and download

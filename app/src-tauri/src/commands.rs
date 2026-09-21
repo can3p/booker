@@ -230,6 +230,43 @@ mod tests {
         }
     }
 
+    /// The commands Wave 2's contracts step added and its tracks have not
+    /// implemented yet. A track that implements one moves it from here to
+    /// the list above; the wave is not finished while this list has
+    /// anything in it (`docs/waves/wave-2.md`).
+    const NOT_YET_IMPLEMENTED: &[&str] = &[
+        "add_chapter",    // track C
+        "move_chapter",   // track C
+        "pages_at",       // track D
+        "remove_chapter", // track C
+        "rename_chapter", // track C
+        "source_at",      // track D
+    ];
+
+    #[test]
+    fn every_name_in_the_contract_is_implemented_or_listed_as_not_yet() {
+        let implemented = [
+            "close_project",
+            "compile",
+            "export_pdf",
+            "open_project",
+            "project_info",
+            "read_chapter",
+            "recent_projects",
+            "reload_project",
+            "render_page",
+            "save_chapter",
+        ];
+        for name in COMMANDS {
+            assert!(
+                implemented.contains(name)
+                    || NOT_YET_IMPLEMENTED.contains(name)
+                    || *name == "page_image_url",
+                "`{name}` is in the contract but neither implemented nor listed as pending"
+            );
+        }
+    }
+
     /// `page_image_url` is in the contract as the URL *shape* the preview
     /// uses, built by `booker_core::ipc::page_image_url` and answered by
     /// `crate::protocol` — there is no `#[tauri::command]` for it and there

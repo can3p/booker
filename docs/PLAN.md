@@ -360,12 +360,13 @@ Three decisions taken there that constrain what follows: there is exactly one tr
 | Track | Work | Tier |
 |---|---|---|
 | A. Doc AST | Markdown → AST (headings, paragraphs, emphasis, lists, quotes, simple images, breaks, attributes), with source spans | L |
-| B. Codegen | AST → Typst: chapters, `chapter.start`, TOC, page setup presets, margins, base font, **typographic defaults** (justification, hyphenation by language, stranded-line protection, smart quotes and dashes, ligatures) | L |
+| B. Codegen | AST → Typst: chapters, `chapter.start`, TOC, page numbers, page setup presets, margins, **built-in themes** (one per template: the typographic starting values Wave 3's `styles.toml` overrides), **typographic defaults** (justification, hyphenation by language, stranded-line protection, smart quotes and dashes, ligatures) | L |
 | C. Editor | CodeMirror 6: Markdown live-styling (syntax hidden like Obsidian), chapter tree (add/rename/reorder → `book.toml`), autosave | M |
 | D. Preview | Incremental compile loop, visible-page rendering, zoom, click-to-source and cursor-to-page sync | M |
 | E. Project I/O | Conflict handling on top of Wave 1's watcher (an outside edit meeting an unsaved buffer offers both versions), `toml_edit` writer, `.gitignore`/`.gitattributes` generation | M |
 | F. Templates & fonts | 4 starter templates (novel, picture book, poetry, short paper), bundled font set + licenses | S (content) / M (wiring) |
-| G. Tests & CLI | Golden tests: fixture projects → PNG snapshots with pixel diff; `booker build`, and the first `booker check` rules (missing files, unresolved references) | S (fixtures) / M (harness) |
+| G. Tests & CLI | Golden tests: fixture projects → PNG snapshots with pixel diff; `booker check` and its first rules (missing files, unresolved references); `booker where FILE:LINE` and `booker page N`, the CLI twins of click-to-source | S (fixtures) / M (harness) |
+| H. Tutorials | Templates, the table of contents, `check` and `where` in tutorial 01; the editor, chapter tree and conflicts in tutorial 02; a new tutorial on the Markdown a book needs | S |
 
 ### Wave 3: Styles
 **Demo:** click a heading, change it to bold 18 pt Arial on a green background, and see every heading update. Add a drop cap from an image to each chapter.
@@ -424,7 +425,7 @@ Exit criteria: a 24-page picture book can be laid out end to end without touchin
 |---|---|---|
 | A. Diagnostics engine | Rule registry with stable IDs and severities, source **and** layout locations, `[check]` configuration, inline suppressions, `booker explain <rule>` | L |
 | B. Rules backfill | The rules for everything Waves 1–5 shipped: references, layout, style, text, images (one rule per ticket) | M (rules: S) |
-| C. CLI | `check` (human / JSON / SARIF, exit codes), `render --page`, `where`, `page`, `fmt`, `fix --safe` | M |
+| C. CLI | `check` (SARIF, on top of Wave 2's human and JSON output), `render --page`, `where` by phrase and `page` as JSON (on top of Wave 2's `where FILE:LINE` and `page N`), `fmt`, `fix --safe` | M |
 | D. MCP server | `booker mcp` over stdio, tools mirroring the CLI, confined to the project folder, read-mostly | M |
 | E. Resilience | Hardening against outside edits: atomic writes, echo suppression, revision counter, partial load of broken projects, and the stress tests that prove Wave 1's watcher and Wave 2's conflict handling survive thirty files rewritten at once | L |
 | F. Discoverability | JSON Schemas generated from the parsing structs, `booker capabilities --json`, `booker explain <topic\|rule>`, `booker recipe list/show`, "did you mean" suggestions on unknown keys | M (recipes: S) |

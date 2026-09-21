@@ -14,6 +14,7 @@ booker-core = { workspace = true }
 booker-doc = { workspace = true }
 comemo = { workspace = true }
 typst = { workspace = true }
+typst-ide = { workspace = true }
 typst-kit = { workspace = true }
 typst-layout = { workspace = true }
 typst-pdf = { workspace = true }

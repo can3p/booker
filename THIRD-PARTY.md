@@ -329,7 +329,7 @@ $Id$
 
 Every crate compiled into a Booker build, grouped by licence. Generated from the dependency tree, so it describes this build rather than a build somebody documented once.
 
-1027 crates under 14 licences.
+1028 crates under 14 licences.
 
 ### 0BSD
 
@@ -657,6 +657,7 @@ Every crate compiled into a Booker build, grouped by licence. Generated from the
 - typst-assets 0.15.1
 - typst-eval 0.15.1
 - typst-html 0.15.1
+- typst-ide 0.15.1
 - typst-kit 0.15.1
 - typst-layout 0.15.1
 - typst-library 0.15.1

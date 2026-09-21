@@ -52,6 +52,21 @@ pub struct PageInfo {
     pub chapter: Option<String>,
 }
 
+/// A place on a laid-out page: where somebody clicked, or where a piece of
+/// the source landed.
+///
+/// Measured from the page's top-left corner, in the same `Length` every
+/// other geometry uses, so a UI converts it with the page size it already
+/// has rather than guessing at a renderer's scale.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../app/src/lib/bindings/")]
+pub struct PagePoint {
+    /// 0-based, matching [`PageInfo::index`].
+    pub page: u32,
+    pub x: Length,
+    pub y: Length,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 #[ts(export, export_to = "../../../app/src/lib/bindings/")]

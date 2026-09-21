@@ -261,6 +261,11 @@ impl ConfigFile {
             language,
             chapters,
             page,
+            // Read in Wave 2 track E; until then the defaults, and the keys stay
+            // in `extra` as planned-but-not-built (`PLANNED_KEYS`).
+            theme: None,
+            toc: Default::default(),
+            chapter: Default::default(),
             extra,
         };
 

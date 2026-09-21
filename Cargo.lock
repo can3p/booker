@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "booker-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "booker-core",
  "booker-doc",
@@ -287,7 +287,7 @@ dependencies = [
 
 [[package]]
 name = "booker-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "booker-core",
@@ -301,7 +301,7 @@ dependencies = [
 
 [[package]]
 name = "booker-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -312,7 +312,7 @@ dependencies = [
 
 [[package]]
 name = "booker-doc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "booker-core",
  "pulldown-cmark",
@@ -320,7 +320,7 @@ dependencies = [
 
 [[package]]
 name = "booker-project"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "booker-core",
  "booker-doc",
@@ -333,7 +333,7 @@ dependencies = [
 
 [[package]]
 name = "booker-typst"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "booker-core",
  "booker-doc",
@@ -7345,7 +7345,7 @@ checksum = "9440ea3e5aeabb0ac63af70daf835274065238cdd0cec83418f417eae38bacee"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",

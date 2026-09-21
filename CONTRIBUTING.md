@@ -105,17 +105,44 @@ ought to be stable. Output is always copied from a real run, never typed from me
 `.github/workflows/release.yml` builds the installers, and only a tag starts it — they cost
 far more runner time than the rest of CI put together.
 
+**First, the version.** The application reports the version in the workspace `Cargo.toml`,
+not the tag — `tauri.conf.json` sets none — and the updater compares versions, so a tag on a
+build that still carries the old number is never offered to anyone. Before tagging, a pull
+request into `main` sets the new version in four places:
+
+- `version` under `[workspace.package]` in `Cargo.toml` (then `cargo metadata` updates
+  `Cargo.lock`, and `cargo xtask third-party` updates `THIRD-PARTY.md`, which lists our own
+  crates too),
+- `version` in `app/package.json`,
+- the `booker --version` line in `docs/tutorials/01-your-first-book.md` — the tutorial test
+  fails until it matches, which is how you find out,
+- the `## Unreleased` heading in `CHANGELOG.md`, which becomes the release's.
+
+Then, on `main`, once that is merged and green:
+
 ```bash
-# On the wave branch, after it is merged to main and everything is green:
+git switch main && git pull
 git tag v0.2.0 && git push origin v0.2.0
 ```
 
-That produces bundles for macOS (Apple Silicon and Intel), Windows and Linux, signs the
+The workflow first checks that the tag matches both versions and stops in seconds if it does
+not. Then it builds bundles for macOS (Apple Silicon and Intel), Windows and Linux, signs the
 update artifacts with the key in repository secrets, and creates a **draft** GitHub release
-with `latest.json` attached. The draft is deliberate: `AGENTS.md` §4 makes "the previous
-release updates itself to the new one" the one check that is never skipped, and that check
-happens before anybody can receive the release. Publishing is a button, pressed by whoever
-did the check.
+with `latest.json` attached. Nobody receives a draft.
+
+**Then the update check** — `AGENTS.md` §4, the one check that is never skipped. Installed
+copies read `releases/latest/download/latest.json`, and GitHub serves that only from a
+*published* release, so the check cannot happen while the new release is still a draft:
+
+1. Have the previous release installed (from its release page).
+2. Publish the new draft.
+3. In the installed copy, **Check for Updates…**: it must offer the new version, install it,
+   and restart into it — confirm with **About Booker**.
+4. If any of that fails, turn the release back into a draft straight away (Edit → Save as
+   draft), so no one else is offered a build that cannot be updated out of.
+
+Write the result into the wave's "Update check" line in `docs/WAVE-LOG.md` only once it is
+true.
 
 To find out whether the installers build without releasing anything, run the workflow by
 hand from the Actions tab; the bundles are kept as artifacts for a week.

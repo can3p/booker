@@ -10,7 +10,7 @@ over it (`AGENTS.md` §3).
 
 ## Unreleased
 
-## v0.2.0 — the application
+## v0.2.0 — the application (not yet published)
 
 The first installable Booker.
 

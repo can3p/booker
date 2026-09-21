@@ -19,7 +19,7 @@ Format:
 ---
 
 ## Wave 1 — The application and how it reaches people
-- Shipped: 2026-09-20, merged to `main` as PR #9, released as `v0.2.0` — the first tag anyone can install.
+- Shipped: 2026-09-20, merged to `main` as PR #9. **Not yet released**: `v0.2.0` has not been tagged. The entry originally said it had been; it was written before the release step and merged before anyone ran it (see the deviation below).
 - Demo: download an installer, open a folder that contains a book, read its chapters, edit one and watch the pages redraw, break `book.toml` from another editor and watch the problem appear, export a PDF. Then publish `v0.2.1` and watch the installed copy update itself.
 - Tracks: contracts (lead) · B application shell · C preview and watcher · D hygiene · A release pipeline · D2 tutorial — run by one session, sequentially, in the order the brief's dependencies imply rather than in parallel worktrees. The wave was four tracks on paper and one line of work in practice: B had to exist before C could hang a preview inside it, and D2 describes the application that shipped.
 - Deviations from the plan:
@@ -27,6 +27,7 @@ Format:
   - **A minimal watcher landed here rather than in Wave 2.** Track C's done criterion — an edit on disk visible in the preview — needs one. Conflict handling (an outside edit meeting an unsaved buffer) stayed in Wave 2 track E, and the stress tests in Wave 7 track E. The plan was updated in the same change.
   - **`reload_project` was appended to the frozen contract**, in an integration commit: the event says *that* the folder changed, the command says what the book now is.
   - **The beta channel is half built.** A beta tag produces installers and a prerelease that `releases/latest` does not point at, so no installed copy is offered it. Staying on the channel needs a second manifest at a fixed URL and a setting in the application, which means guessing now at how people move between channels — including going back to stable from a beta whose version number is higher. Deferred with the reasoning in `docs/OPEN-QUESTIONS.md` Q-12.
+  - **The release step never ran, and would have failed if it had.** The wave merged with its last exit criterion — tag `v0.2.0`, tag `v0.2.1`, watch one update to the other — still open, while this entry, `AGENTS.md`, `CHANGELOG.md`, `README.md` and the app tutorial already described `v0.2.0` as released. When the release was picked up the next day it turned out the step could not have succeeded: `tauri.conf.json` sets no version, so the bundles take the workspace's `0.1.0`, which nobody had bumped. Both tags would have produced builds calling themselves `0.1.0`, and the updater — which compares versions, not tag names — would never have offered one to the other. The fix sets the version to `0.2.0`, adds a job to `release.yml` that refuses a tag differing from the version before any build starts, and makes the `booker --version` line in tutorial 01 a checked one so the next bump cannot forget it. The documents were corrected to say the release is pending, in its own pull request, until it happens.
   - **Signing is not set up.** There is no Apple Developer ID and no Windows certificate, so the first launch warns on both platforms. The release workflow already reads their secrets, so signed builds need certificates rather than another change. The *updater* is signed regardless, with a minisign key generated during the wave and stored as repository secrets.
 - **What the tests found that nothing else would have.** Two bugs and three bad tests, all in the watcher:
   - One write produces several filesystem events for the same path, so asking "is this our own echo?" once per event marked the first as ours and every later one as an outside edit. Every save turned into a reload that fought the editor. Deduplicating the paths within a burst is what fixes it; echo suppression then stopped guessing altogether and now compares the file's content with what we wrote (`AGENTS.md` §7), which has no time window to get wrong and means an outside edit landing a moment after a save is reported rather than swallowed.
@@ -35,14 +36,14 @@ Format:
   - Three tests asserted that nothing was reported, or that a particular event came first. Both are assertions about how fast the machine is, and the macOS runner collected on them twice: it hands a watch the files written just before the watch started, so a test that had written neither was shown `AGENTS.md` and the template's chapter. The tests now use a sentinel — a watch delivers in order, so a file written last and waited for proves everything before it has already arrived. Simulating the leak fails four of the five old tests and none of the new ones.
   - The tutorial harness refused a tutorial with no commands in it, which is every tutorial about a window. It now checks such a tutorial by building the files it tells the reader to create.
 - Deferred: the beta channel (Q-12); conflict handling on an unsaved buffer (Wave 2 track E); `CHANGELOG.md` entries for anything before `v0.2.0`, which were never releases.
-- Update check: **`v0.2.0` → `v0.2.1`, by hand, on macOS.** [To be completed at release — this line is written when it is true.]
+- Update check: **not yet done** — it needs the two releases above.
 - Agent surface: not applicable — Wave 7.
 - Findings recorded: nine entries in `docs/FINDINGS.md` — the Node and rolldown traps, what Tauri's two new licences actually require, generating an icon without an image editor, the multi-event echo bug, `tauri::test` as a way to test a custom protocol, why a debounce boundary must not be asserted, how the debouncer splits one write across batches, that an atomic write changes the folder it is written in, and that a macOS watch can report files written before it started.
 
 ---
 
 ## Wave 0.6 — The first tutorial, and the harness that keeps tutorials true
-- Shipped: 2026-09-20, merged to `main` as PR #7 (no release tag: nothing installable yet, the first tag is Wave 1's `v0.2.0`).
+- Shipped: 2026-09-20, merged to `main` as PR #7 (no release tag: nothing installable yet).
 - Demo: from a clean clone, `cargo install --path crates/booker-cli`, then follow `docs/tutorials/01-your-first-book.md` — `booker new the-moon-jar`, write two chapters, set a 5.5 × 8.5 in page, `booker build .` — and hold a two-page PDF of *The Moon in a Jar*. Then change `Problems: none` to `Problems: nothing` in `crates/booker-cli/src/lib.rs` and `cargo test` fails with `docs/tutorials/01-your-first-book.md:107: the tutorial says this line is printed: Problems: none / but `booker build .` printed: Problems: nothing`.
 - Tracks: A the tutorial · B the harness · C where it is advertised — one session, sequentially, as the brief allowed. The wave was far too small for worktrees to pay for themselves, the same conclusion Wave 0.5 reached.
 - Deviations from the plan:
@@ -61,7 +62,7 @@ Format:
 ---
 
 ## Wave 0.5 — Continuous integration
-- Shipped: 2026-09-20, merged to `main` as PR #4 (no release tag: nothing installable yet, the first tag is Wave 1's `v0.2.0`). The planning that preceded it merged as PR #3.
+- Shipped: 2026-09-20, merged to `main` as PR #4 (no release tag: nothing installable yet). The planning that preceded it merged as PR #3.
 - Demo: open a pull request that is unformatted, warns under clippy, fails a test or duplicates a dependency key; CI marks it red, one job per fault, each message naming the fault. Fixed, it goes green on macOS, Linux and Windows.
 - Tracks: A workflow · B green off macOS · C dependency and repository guards — run by one session rather than in parallel worktrees; the wave was too small for the setup to pay for itself.
 - Deviations from the plan:

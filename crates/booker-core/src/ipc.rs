@@ -144,7 +144,7 @@ pub struct ChapterText {
 #[ts(export, export_to = "../../../app/src/lib/bindings/")]
 pub enum SaveOutcome {
     /// Written; this is the project as it now is.
-    Saved { info: ProjectInfo },
+    Saved { info: Box<ProjectInfo> },
     /// The file changed underneath the editor. Nothing was written, and the
     /// person chooses: keep theirs, take the one on disk, or keep both.
     Conflict {

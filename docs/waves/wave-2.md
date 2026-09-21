@@ -82,7 +82,7 @@ and two IPC commands, appended in the contracts commit: `source_at(PagePoint) ->
 ```rust
 #[serde(tag = "outcome", rename_all = "kebab-case")]   // {"outcome": "saved", "info": …}
 pub enum SaveOutcome {
-    Saved { info: ProjectInfo },
+    Saved { info: Box<ProjectInfo> },
     /// The file on disk is not what the editor last read. Nothing was written.
     Conflict { disk: ChapterText, mine: String },
 }
